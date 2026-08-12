@@ -25,6 +25,8 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | 4. Refine (agentli sikl) | `RefinementAgent` / Nano multimodal | AICore | Faza 2: sikl ishlaydi |
 | + Teksturalar (generativ) | `TextureGenerator` | NPU (Faza 2) | procedural zaxira |
 | + Ko'rinish kanallari | depth / normal / instance | GPU G-bufer | referens tayyor |
+| + 3D eksport (glTF) | `WorldExporter` / `gltf` | — | .glb, istalgan ko'ruvchi |
+| + Izometrik 3D preview | `iso` | — | referens (Godotsiz) |
 
 Relyefning **noise funksiyasi Python, GDScript va GLSL'da aynan bir xil**
 (32-bitlik bit-hash), shuning uchun CPU va GPU yo'llari bir xil dunyoni beradi —
@@ -83,13 +85,24 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
   (`evaluate_scene`) ulash uchun tayyor.
 - **Faza 3** — on-device generativ mesh, dunyoni saqlash/eksport (glTF).
 
-### Faza 2 ni sinash
+- **Faza 3** ⏳ (qisman) — **3D eksport va ko'rish tayyor**: `.glb` eksport
+  (`WorldExporter` / `gltf`) va izometrik 3D preview (`iso`). Qolgani:
+  on-device generativ mesh (image-to-3D) — R&D, primitivlarni almashtiradi.
+
+### Faza 2–3 ni sinash
 
 ```bash
 cd reference
 python3 generate_demo.py --refine "qorli qishloq"        # agentli sifat sikli
 python3 generate_demo.py --channels --all --out _out     # depth/normal/instance + teksturalar
+python3 generate_demo.py --glb --iso "tropik orol"       # .glb 3D fayl + izometrik preview
 ```
+
+**"Tushunarli 3D" qachon?** Haqiqiy 3D Faza 1'dan Godot kodida bor (relyef
+mesh + orbit/yurish kamera). Godotsiz ko'rish uchun: `--iso` izometrik preview
+beradi, `--glb` esa istalgan 3D ko'ruvchida (Blender, brauzer, telefon)
+ochiladigan fayl beradi. Sifat fazalar bilan oshadi: blokli → teksturali →
+generativ mesh.
 
 ### Godot skripting eslatmasi
 

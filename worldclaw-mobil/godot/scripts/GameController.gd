@@ -122,3 +122,13 @@ func _on_orbit_pressed() -> void:
 
 func _on_walk_pressed() -> void:
 	_camera_rig.set_mode(CameraRig.Mode.WALK)
+
+
+func _on_export_pressed() -> void:
+	# Faza 3 — joriy dunyoni .glb qilib saqlaydi (istalgan 3D ko'ruvchi ochadi).
+	var path := "user://worldclaw_export.glb"
+	var err := WorldExporter.export_world(_terrain_holder, _scatter, path)
+	if err == OK:
+		_set_status("Eksport: %s" % ProjectSettings.globalize_path(path))
+	else:
+		_set_status("Eksport xatosi (%d)" % err)

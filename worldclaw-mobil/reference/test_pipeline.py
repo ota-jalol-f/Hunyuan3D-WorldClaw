@@ -196,6 +196,46 @@ def test_channels() -> None:
     check("depth kulrang", grayscale)
 
 
+def test_gltf_export() -> None:
+    import os, struct, json as _json, tempfile
+    from worldclaw import generate_world
+    from worldclaw.gltf import export_glb
+
+    r = generate_world("qorli qishloq tog'lar", size=64)
+    path = os.path.join(tempfile.gettempdir(), "wc_test.glb")
+    stats = export_glb(r, path, max_objects=500, terrain_stride=2)
+
+    with open(path, "rb") as f:
+        data = f.read()
+    magic, ver, total = struct.unpack("<III", data[:12])
+    check("glb magic to'g'ri", magic == 0x46546C67)
+    check("glb versiya 2", ver == 2)
+    check("glb uzunlik mos", total == len(data))
+    jlen, jtype = struct.unpack("<II", data[12:20])
+    check("glb JSON chunk", jtype == 0x4E4F534A)
+    gltf = _json.loads(data[20:20 + jlen])
+    check("glb relyef mesh bor", len(gltf["meshes"]) >= 1)
+    check("glb tugunlar bor", len(gltf["nodes"]) >= 1)
+    # accessor chegaralari bufer ichida
+    blen = struct.unpack("<I", data[20 + jlen:24 + jlen])[0]
+    ok = all(gltf["bufferViews"][a["bufferView"]]["byteOffset"]
+             + gltf["bufferViews"][a["bufferView"]]["byteLength"] <= blen
+             for a in gltf["accessors"])
+    check("glb accessorlar bufer ichida", ok)
+    os.remove(path)
+
+
+def test_iso_render() -> None:
+    from worldclaw import generate_world
+    from worldclaw.iso import render_iso
+    r = generate_world("yashil vodiy", size=48)
+    w, h, px = render_iso(r.heightmap, r.placements, width=200, stride=1)
+    check("iso o'lchami", w == 200 and len(px) == w * h * 3)
+    # Fon bir xil emas — relyef chizilgan (turli piksellar bor)
+    sample = set((px[i], px[i + 1], px[i + 2]) for i in range(0, len(px), 300))
+    check("iso relyef chizilgan", len(sample) > 5, f"ranglar={len(sample)}")
+
+
 def main() -> int:
     tests = [
         ("noise", test_noise_deterministic),
@@ -212,6 +252,8 @@ def main() -> int:
         ("refine determinizm", test_refine_deterministic),
         ("generativ tekstura", test_texture),
         ("ko'rinish kanallari", test_channels),
+        ("glTF eksport", test_gltf_export),
+        ("izometrik render", test_iso_render),
     ]
     for title, fn in tests:
         print(f"[{title}]")

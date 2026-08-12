@@ -15,7 +15,10 @@ import sys
 
 from worldclaw import generate_world, refine, render_world_png, summary
 from worldclaw.channels import write_channels
+from worldclaw.gltf import export_glb
+from worldclaw.iso import render_iso
 from worldclaw.pipeline import WorldCache
+from worldclaw.pngwriter import write_rgb_png
 from worldclaw.refine import format_history
 from worldclaw.texture import write_materials
 
@@ -30,7 +33,8 @@ _SAMPLES = [
 
 
 def _run_one(prompt: str, out_dir: str, cache: WorldCache, *, size: int,
-             do_refine: bool = False, do_channels: bool = False) -> str:
+             do_refine: bool = False, do_channels: bool = False,
+             do_glb: bool = False, do_iso: bool = False) -> str:
     if do_refine:
         rr = refine(prompt, size=size)
         result = rr.world
@@ -49,6 +53,18 @@ def _run_one(prompt: str, out_dir: str, cache: WorldCache, *, size: int,
         tx = write_materials(slug, os.path.join(out_dir, f"tex_{slug}"), seed=result.plan.terrain.seed)
         print(f"  -> kanallar: {[os.path.basename(c) for c in ch]}")
         print(f"  -> teksturalar: {[os.path.basename(t) for t in tx]}")
+
+    if do_glb:
+        glb_path = os.path.join(out_dir, f"world_{slug}.glb")
+        stats = export_glb(result, glb_path, terrain_stride=2)
+        print(f"  -> glTF: {os.path.basename(glb_path)}  ({stats['bytes'] // 1024} KB, "
+              f"{stats['nodes']} tugun) — istalgan 3D ko'ruvchida oching")
+
+    if do_iso:
+        iso_path = os.path.join(out_dir, f"iso_{slug}.png")
+        w, h, px = render_iso(result.heightmap, result.placements, width=760)
+        write_rgb_png(iso_path, w, h, px)
+        print(f"  -> izometrik 3D: {os.path.basename(iso_path)}  ({w}x{h})")
     print()
     return path
 
@@ -61,6 +77,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--size", type=int, default=192, help="heightmap qirrasi")
     ap.add_argument("--refine", action="store_true", help="Faza 2 agentli sifat sikli")
     ap.add_argument("--channels", action="store_true", help="depth/normal/instance + teksturalar")
+    ap.add_argument("--glb", action="store_true", help="Faza 3: .glb 3D fayl eksport")
+    ap.add_argument("--iso", action="store_true", help="Faza 3: izometrik 3D preview PNG")
     args = ap.parse_args(argv)
 
     os.makedirs(args.out, exist_ok=True)
@@ -69,7 +87,8 @@ def main(argv: list[str]) -> int:
     if args.all:
         for prompt in _SAMPLES:
             _run_one(prompt, args.out, cache, size=args.size,
-                     do_refine=args.refine, do_channels=args.channels)
+                     do_refine=args.refine, do_channels=args.channels,
+                     do_glb=args.glb, do_iso=args.iso)
         return 0
 
     if not args.prompt:
@@ -77,7 +96,8 @@ def main(argv: list[str]) -> int:
         return 2
 
     _run_one(args.prompt, args.out, cache, size=args.size,
-             do_refine=args.refine, do_channels=args.channels)
+             do_refine=args.refine, do_channels=args.channels,
+             do_glb=args.glb, do_iso=args.iso)
     return 0
 
 

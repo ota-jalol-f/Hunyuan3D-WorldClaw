@@ -49,6 +49,10 @@ text = "Aylanish"
 [node name="Walk" type="Button" parent="UI/Controls"]
 text = "Yurish"
 
+[node name="Export" type="Button" parent="UI/Controls"]
+text = "Eksport .glb"
+
 [connection signal="pressed" from="UI/Controls/Regenerate" to="." method="_on_regenerate_pressed"]
 [connection signal="pressed" from="UI/Controls/Orbit" to="." method="_on_orbit_pressed"]
 [connection signal="pressed" from="UI/Controls/Walk" to="." method="_on_walk_pressed"]
+[connection signal="pressed" from="UI/Controls/Export" to="." method="_on_export_pressed"]
