@@ -1,0 +1,73 @@
+# WorldClaw Mobil
+
+Galaxy S26 Ultra uchun **qurilma ichida (on-device)** ishlaydigan AI 3D dunyo
+generatori. Bitta matnli promptdan — o'rganib bo'ladigan 3D dunyo. Tencent
+WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
+
+> **Faza 1 (MVP) — ushbu skelet.** Ishlaydigan pipeline: prompt → reja →
+> relyef → obyektlar → ko'rish. To'liq arxitektura hujjati loyihada alohida.
+
+## Asosiy qarorlar
+
+- **On-device** — internetsiz, maxfiy, kechikishsiz.
+- **To'g'ridan-3D** — geometriya oraliq 2D rasm bosqichisiz quriladi.
+- **Tekstura generativ** — sirtlar assetdan olinmaydi, qurilmada generatsiya
+  qilinadi (Faza 2, NPU).
+- **Kesh birinchi** — bir xil `(prompt, seed, size)` qayta hisoblanmaydi.
+
+## Pipeline (arxitektura oqimi)
+
+| Bosqich | Modul | Chip | Holat |
+|---|---|---|---|
+| 1. Intent (niyat → reja) | AICore / Gemini Nano | AICore | Faza 1: oflayn zaxira rejalovchi |
+| 2. Terrain (relyef) | `TerrainGenerator` | GPU (Faza 1.5) | Faza 1: CPU (GDScript) |
+| 3. Assets + Scatter | `ScatterSystem` | GPU instancing | Faza 1: primitiv geometriya |
+| 4. Refine (agentli sikl) | Nano multimodal | AICore | Faza 2 |
+
+## Tuzilma
+
+```
+worldclaw-mobil/
+├─ reference/          Pure-Python referens (bu yerda ishga tushib TEKSHIRILADI)
+│  ├─ worldclaw/       noise · terrain · scene_plan · scatter · render · pipeline
+│  ├─ generate_demo.py CLI: promptdan preview PNG
+│  └─ test_pipeline.py 27 test (deterministik, chegaralar, kesh, scatter)
+├─ godot/              Godot 4 loyihasi (Android/Vulkan)
+│  ├─ project.godot    mobil renderer sozlamalari
+│  ├─ scenes/main.tscn sahna daraxti
+│  ├─ scripts/         GameController · TerrainGenerator · ScatterSystem ·
+│  │                   ScenePlan · CameraRig  (referens mantiqning aynan nusxasi)
+│  ├─ shaders/         terrain_height.glsl  (Faza 1.5 GPU compute)
+│  └─ assets/          library.json (asset manifesti)
+├─ android/            IntentPlanner.kt  (AICore/Gemini Nano ko'prigi)
+├─ docs/               scene-plan-schema.json  (pipeline shartnomasi)
+└─ examples/           plan_snowy_village.json
+```
+
+## Referensni ishga tushirish (kutubxonasiz)
+
+```bash
+cd reference
+python3 test_pipeline.py                 # 27 test
+python3 generate_demo.py --all --out _out # barcha biomlar -> PNG
+python3 generate_demo.py "qorli qishloq tog'lar"
+```
+
+Referens — qurilmadagi tizimning mantiqiy nusxasi. GDScript va Kotlin
+modullari aynan shu algoritmlarni takrorlaydi, shuning uchun referens
+testlari qurilma xulq-atvorini ham tasdiqlaydi.
+
+## Godot loyihasini ochish
+
+1. Godot 4.3+ oching → *Import* → `godot/` papkasini tanlang.
+2. `scenes/main.tscn` ni ishga tushiring (F5).
+3. Android eksporti: *Project → Export → Android* (Gradle build yoqilgan).
+
+Sukut bo'yicha `AICoreBridge` singletoni bo'lmasa (masalan, desktop), GDScript
+oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
+
+## Keyingi fazalar
+
+- **Faza 1.5** — relyefni `terrain_height.glsl` compute shaderiga ko'chirish.
+- **Faza 2** — NPU tekstura generatsiyasi + Nano multimodal refine sikli.
+- **Faza 3** — on-device generativ mesh, dunyoni saqlash/eksport (glTF).

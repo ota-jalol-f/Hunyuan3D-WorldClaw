@@ -1,0 +1,54 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/GameController.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ScatterSystem.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/CameraRig.gd" id="3"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky"]
+
+[sub_resource type="Sky" id="SkyRes"]
+sky_material = SubResource("Sky")
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.7, 0.7, -0.7, -0.5, 0.5, 0, 300, 0)
+shadow_enabled = true
+
+[node name="TerrainHolder" type="Node3D" parent="."]
+
+[node name="ScatterSystem" type="Node3D" parent="."]
+script = ExtResource("2")
+
+[node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Status" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 600.0
+offset_bottom = 60.0
+text = "Ishga tushmoqda…"
+
+[node name="Controls" type="HBoxContainer" parent="UI"]
+offset_left = 24.0
+offset_top = 80.0
+offset_right = 520.0
+offset_bottom = 140.0
+theme_override_constants/separation = 12
+
+[node name="Regenerate" type="Button" parent="UI/Controls"]
+text = "Qayta yaratish"
+
+[node name="Orbit" type="Button" parent="UI/Controls"]
+text = "Aylanish"
+
+[node name="Walk" type="Button" parent="UI/Controls"]
+text = "Yurish"
+
+[connection signal="pressed" from="UI/Controls/Regenerate" to="." method="_on_regenerate_pressed"]
+[connection signal="pressed" from="UI/Controls/Orbit" to="." method="_on_orbit_pressed"]
+[connection signal="pressed" from="UI/Controls/Walk" to="." method="_on_walk_pressed"]

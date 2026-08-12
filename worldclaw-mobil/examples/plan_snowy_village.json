@@ -1,0 +1,57 @@
+{
+  "prompt": "qorli qishloq, ikki yonida baland tog'lar",
+  "terrain": {
+    "biome": "snow",
+    "seed": 237865817,
+    "size": 256,
+    "world_scale": 400.0,
+    "height_scale": 80.0,
+    "mountain_strength": 0.75,
+    "water_level": 0.28,
+    "roughness": 0.5
+  },
+  "scatter": [
+    {
+      "kind": "tree",
+      "density": 0.05,
+      "min_height": 0.3,
+      "max_height": 0.75,
+      "max_slope": 0.5,
+      "avoid_water": true
+    },
+    {
+      "kind": "house",
+      "density": 0.004,
+      "min_height": 0.3,
+      "max_height": 0.55,
+      "max_slope": 0.25,
+      "avoid_water": true
+    },
+    {
+      "kind": "rock",
+      "density": 0.02,
+      "min_height": 0.28,
+      "max_height": 0.95,
+      "max_slope": 0.8,
+      "avoid_water": true
+    },
+    {
+      "kind": "torch",
+      "density": 0.003,
+      "min_height": 0.3,
+      "max_height": 0.55,
+      "max_slope": 0.3,
+      "avoid_water": true
+    },
+    {
+      "kind": "fence",
+      "density": 0.01,
+      "min_height": 0.3,
+      "max_height": 0.55,
+      "max_slope": 0.3,
+      "avoid_water": true
+    }
+  ],
+  "style": "cartoon",
+  "notes": "qoidali zaxira rejalovchi; aniqlangan biom: snow"
+}

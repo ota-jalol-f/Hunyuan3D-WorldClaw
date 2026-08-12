@@ -1,0 +1,18 @@
+{
+  "_note": "Asset kutubxonasi manifesti. Geometriya kutubxonadan (parametrik/tayyor GLB), sirt teksturalari esa qurilmada generatsiya qilinadi (assetga tekstura biriktirilmaydi).",
+  "version": 1,
+  "kinds": {
+    "tree":   { "mesh": "primitive:cone",    "tags": ["snow", "grass"],            "variations": ["conifer", "bare"] },
+    "palm":   { "mesh": "primitive:cone",    "tags": ["island"],                   "variations": ["tall", "bent"] },
+    "house":  { "mesh": "primitive:box",     "tags": ["snow", "grass", "desert"],  "variations": ["cabin", "hut"] },
+    "rock":   { "mesh": "primitive:sphere",  "tags": ["all"],                      "variations": ["boulder", "shard"] },
+    "cactus": { "mesh": "primitive:capsule", "tags": ["desert", "canyon"],         "variations": ["saguaro", "barrel"] },
+    "torch":  { "mesh": "primitive:cylinder","tags": ["snow", "volcano"],          "variations": ["standing"] },
+    "fence":  { "mesh": "primitive:box",     "tags": ["snow", "grass"],            "variations": ["wood"] }
+  },
+  "texture_generation": {
+    "mode": "on-device",
+    "engine": "LiteRT+QNN (Faza 2)",
+    "note": "Sirt materiallari generatsiya qilinadi, saqlanmaydi; ko'p ishlatilganlari keshda."
+  }
+}

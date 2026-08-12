@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://worldclaw.mobil/scene-plan.schema.json",
+  "title": "ScenePlan",
+  "description": "Intent bosqichi (Gemini Nano / AICore) chiqaradigan strukturali reja. Butun pipeline shu sxemaga tayanadi.",
+  "type": "object",
+  "required": ["prompt", "terrain", "scatter"],
+  "additionalProperties": false,
+  "properties": {
+    "prompt": { "type": "string", "description": "Foydalanuvchining asl tavsifi" },
+    "style": { "type": "string", "enum": ["cartoon", "realistic"], "default": "cartoon" },
+    "notes": { "type": "string" },
+    "terrain": {
+      "type": "object",
+      "required": ["biome", "seed", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "biome": { "type": "string", "enum": ["snow", "desert", "island", "canyon", "volcano", "grass"] },
+        "seed": { "type": "integer", "minimum": 0 },
+        "size": { "type": "integer", "minimum": 16, "maximum": 2048, "description": "heightmap qirrasi (tugunlar)" },
+        "world_scale": { "type": "number", "exclusiveMinimum": 0, "default": 400.0, "description": "dunyoning metrdagi kengligi" },
+        "height_scale": { "type": "number", "exclusiveMinimum": 0, "default": 60.0, "description": "maksimal balandlik (metr)" },
+        "mountain_strength": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.6 },
+        "water_level": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.28 },
+        "roughness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 }
+      }
+    },
+    "scatter": {
+      "type": "array",
+      "description": "Obyekt tarqatish qoidalari; har tur bir marta.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "density"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "type": "string", "enum": ["tree", "house", "rock", "fence", "torch", "cactus", "palm"] },
+          "density": { "type": "number", "minimum": 0, "maximum": 1 },
+          "min_height": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.0 },
+          "max_height": { "type": "number", "minimum": 0, "maximum": 1, "default": 1.0 },
+          "max_slope": { "type": "number", "minimum": 0, "maximum": 1, "default": 1.0 },
+          "avoid_water": { "type": "boolean", "default": true }
+        }
+      }
+    }
+  }
+}

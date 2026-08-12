@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+reference/_out/
+
+# Godot
+godot/.godot/
+godot/android/build/
+export_presets.cfg
+*.tmp
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
