@@ -20,9 +20,13 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | Bosqich | Modul | Chip | Holat |
 |---|---|---|---|
 | 1. Intent (niyat → reja) | AICore / Gemini Nano | AICore | Faza 1: oflayn zaxira rejalovchi |
-| 2. Terrain (relyef) | `TerrainGenerator` | GPU (Faza 1.5) | Faza 1: CPU (GDScript) |
+| 2. Terrain (relyef) | `TerrainCompute` / `TerrainGenerator` | GPU compute + CPU zaxira | Faza 1.5: GPU yo'li ulandi |
 | 3. Assets + Scatter | `ScatterSystem` | GPU instancing | Faza 1: primitiv geometriya |
 | 4. Refine (agentli sikl) | Nano multimodal | AICore | Faza 2 |
+
+Relyefning **noise funksiyasi Python, GDScript va GLSL'da aynan bir xil**
+(32-bitlik bit-hash), shuning uchun CPU va GPU yo'llari bir xil dunyoni beradi —
+GPU mavjud bo'lmasa CPU zaxirasiga muammosiz o'tiladi.
 
 ## Tuzilma
 
@@ -66,8 +70,16 @@ testlari qurilma xulq-atvorini ham tasdiqlaydi.
 Sukut bo'yicha `AICoreBridge` singletoni bo'lmasa (masalan, desktop), GDScript
 oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
 
-## Keyingi fazalar
+## Fazalar holati
 
-- **Faza 1.5** — relyefni `terrain_height.glsl` compute shaderiga ko'chirish.
+- **Faza 1** ✅ — reja → relyef → obyektlar → ko'rish (referens 27/27 test).
+- **Faza 1.5** ✅ (ulandi) — `TerrainCompute.gd` + `terrain_height.glsl` GPU
+  compute yo'li, CPU zaxira bilan. *Godot editorda va qurilmada sinash kerak.*
 - **Faza 2** — NPU tekstura generatsiyasi + Nano multimodal refine sikli.
 - **Faza 3** — on-device generativ mesh, dunyoni saqlash/eksport (glTF).
+
+### Godot skripting eslatmasi
+
+GDScript va GLSL kodi bu muhitda Godot editori bo'lmagani uchun kompilyatorda
+tekshirilmagan. Ular verifikatsiya qilingan Python referens mantiqini aynan
+takrorlaydi; Godot 4.3+ da ochib bir marta ishga tushirish tavsiya etiladi.

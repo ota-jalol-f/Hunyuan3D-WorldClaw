@@ -9,6 +9,7 @@ extends Node3D
 @export var default_prompt: String = "qorli qishloq, ikki yonida baland tog'lar"
 @export var terrain_size: int = 256
 @export var use_aicore: bool = true
+@export var use_gpu_terrain: bool = true   # Faza 1.5: compute shader, aks holda CPU
 
 @onready var _terrain_holder: Node3D = $TerrainHolder
 @onready var _scatter: ScatterSystem = $ScatterSystem
@@ -43,8 +44,12 @@ func generate(prompt: String) -> void:
 		mesh = c.mesh
 		_set_status("Keshdan yuklandi")
 	else:
-		_set_status("Relyef quilmoqda…")
-		heights = TerrainGenerator.generate_heightmap(plan.terrain)
+		_set_status("Relyef qurilmoqda…")
+		heights = PackedFloat32Array()
+		if use_gpu_terrain:
+			heights = TerrainCompute.try_generate(plan.terrain)   # GPU (Faza 1.5)
+		if heights.is_empty():
+			heights = TerrainGenerator.generate_heightmap(plan.terrain)  # CPU zaxira
 		mesh = TerrainGenerator.build_mesh(heights, plan.terrain)
 		_cache[key] = {"heights": heights, "plan": plan, "mesh": mesh}
 

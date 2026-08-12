@@ -9,21 +9,22 @@ from __future__ import annotations
 
 import math
 
-
-# 8-bitlik permutatsiya jadvali — seed bilan aralashtiriladi.
-_PERM_SIZE = 256
+_U32 = 0xFFFFFFFF
 
 
-def _build_perm(seed: int) -> list[int]:
-    """Seed asosida takrorlanuvchi permutatsiya jadvali."""
-    perm = list(range(_PERM_SIZE))
-    # LCG — tashqi bog'liqliksiz, platformalararo bir xil natija.
-    state = (seed ^ 0x9E3779B1) & 0xFFFFFFFF
-    for i in range(_PERM_SIZE - 1, 0, -1):
-        state = (state * 1664525 + 1013904223) & 0xFFFFFFFF
-        j = state % (i + 1)
-        perm[i], perm[j] = perm[j], perm[i]
-    return perm + perm  # ikki marta — indeks o'ralishini yo'qotish uchun
+def _hash_u(x: int) -> int:
+    """32-bitlik butun-hash (GLSL shaderdagi bilan aynan bir xil).
+
+    Bu funksiya Python, GDScript va GLSL'da bir xil natija beradi — shuning
+    uchun relyef CPU va GPU yo'llarida bir xil chiqadi.
+    """
+    x &= _U32
+    x ^= x >> 16
+    x = (x * 0x7FEB352D) & _U32
+    x ^= x >> 15
+    x = (x * 0x846CA68B) & _U32
+    x ^= x >> 16
+    return x & _U32
 
 
 def _fade(t: float) -> float:
@@ -39,12 +40,12 @@ class ValueNoise:
     """Seedlanadigan 2D qiymat-noise; natija taxminan [-1, 1] oralig'ida."""
 
     def __init__(self, seed: int = 0) -> None:
-        self._perm = _build_perm(seed)
+        self._seed = seed & _U32
 
     def _grad_val(self, ix: int, iy: int) -> float:
         """Panjara tugunidagi psevdo-tasodifiy qiymat, [-1, 1]."""
-        h = self._perm[(self._perm[ix & 255] + iy) & 255]
-        return (h / 127.5) - 1.0
+        h = _hash_u((ix * 374761393 + iy * 668265263 + self._seed) & _U32)
+        return (float(h & 0xFFFF) / 32767.5) - 1.0
 
     def at(self, x: float, y: float) -> float:
         x0 = math.floor(x)

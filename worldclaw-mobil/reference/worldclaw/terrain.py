@@ -44,9 +44,14 @@ def _biome_shape(biome: str, base: float, mountains: float, strength: float) -> 
     """
     base01 = base * 0.5 + 0.5  # [-1,1] -> [0,1]
     if biome == "canyon":
-        # Tekis platolar orasida o'yilgan chuqur jarliklar.
-        carve = 1.0 - mountains
-        return _clamp(0.6 + base01 * 0.2 - carve * strength * 0.55)
+        # Zinapoyali mesa platosi + tor chuqur o'yiqlar (tizmali noise cho'qqilarida).
+        terraces = 6.0
+        plat = 0.45 + base01 * 0.4
+        stepped = int(plat * terraces) / terraces
+        plat = stepped * 0.8 + plat * 0.2          # asosan zinapoya, biroz silliq
+        m = _clamp((mountains - 0.55) / 0.25)       # faqat tor tizma chiziqlari
+        channel = m * m * (3.0 - 2.0 * m)           # smoothstep — yumshoq chekka
+        return _clamp(plat - channel * strength * 0.8)
     if biome == "volcano":
         # Markazga qarab ko'tarilib, cho'qqida krater.
         return _clamp(base01 * 0.3 + mountains * strength)

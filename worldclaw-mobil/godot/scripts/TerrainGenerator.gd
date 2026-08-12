@@ -6,25 +6,19 @@ class_name TerrainGenerator
 ## nusxasi (bir xil natija). Faza 1 da CPU'da ishlaydi; Faza 1.5 da og'ir qism
 ## `shaders/terrain_height.glsl` compute shaderiga ko'chiriladi.
 
-const PERM_SIZE := 256
+const U32 := 0xFFFFFFFF
 
 
-static func _build_perm(seed: int) -> PackedInt32Array:
-	var perm := PackedInt32Array()
-	perm.resize(PERM_SIZE)
-	for i in PERM_SIZE:
-		perm[i] = i
-	var state := (seed ^ 0x9E3779B1) & 0xFFFFFFFF
-	for i in range(PERM_SIZE - 1, 0, -1):
-		state = (state * 1664525 + 1013904223) & 0xFFFFFFFF
-		var j := state % (i + 1)
-		var t := perm[i]
-		perm[i] = perm[j]
-		perm[j] = t
-	var doubled := PackedInt32Array()
-	doubled.append_array(perm)
-	doubled.append_array(perm)
-	return doubled
+# 32-bitlik butun-hash — Python referens va GLSL shader bilan aynan bir xil,
+# shuning uchun relyef CPU va GPU yo'llarida bir xil chiqadi.
+static func _hash_u(x: int) -> int:
+	x &= U32
+	x ^= x >> 16
+	x = (x * 0x7FEB352D) & U32
+	x ^= x >> 15
+	x = (x * 0x846CA68B) & U32
+	x ^= x >> 16
+	return x & U32
 
 
 static func _fade(t: float) -> float:
@@ -32,14 +26,14 @@ static func _fade(t: float) -> float:
 
 
 class ValueNoise:
-	var _perm: PackedInt32Array
+	var _seed: int
 
 	func _init(seed: int) -> void:
-		_perm = TerrainGenerator._build_perm(seed)
+		_seed = seed & TerrainGenerator.U32
 
 	func _grad_val(ix: int, iy: int) -> float:
-		var h := _perm[(_perm[ix & 255] + iy) & 255]
-		return (h / 127.5) - 1.0
+		var h := TerrainGenerator._hash_u((ix * 374761393 + iy * 668265263 + _seed) & TerrainGenerator.U32)
+		return (float(h & 0xFFFF) / 32767.5) - 1.0
 
 	func at(x: float, y: float) -> float:
 		var x0 := int(floor(x))
@@ -87,8 +81,13 @@ static func _biome_shape(biome: String, base: float, mountains: float, strength:
 	var base01 := base * 0.5 + 0.5
 	match biome:
 		"canyon":
-			var carve := 1.0 - mountains
-			return clampf(0.6 + base01 * 0.2 - carve * strength * 0.55, 0.0, 1.0)
+			var terraces := 6.0
+			var plat := 0.45 + base01 * 0.4
+			var stepped := float(int(plat * terraces)) / terraces
+			plat = stepped * 0.8 + plat * 0.2
+			var m := clampf((mountains - 0.55) / 0.25, 0.0, 1.0)
+			var channel := m * m * (3.0 - 2.0 * m)
+			return clampf(plat - channel * strength * 0.8, 0.0, 1.0)
 		"volcano":
 			return clampf(base01 * 0.3 + mountains * strength, 0.0, 1.0)
 		_:

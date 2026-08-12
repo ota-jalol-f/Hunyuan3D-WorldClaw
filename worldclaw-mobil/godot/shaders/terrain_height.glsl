@@ -77,9 +77,14 @@ float ridged(vec2 pos, int seed, float gain) {
 
 float biome_shape(float base, float mountains, float strength) {
     float base01 = base * 0.5 + 0.5;
-    if (p.biome == 3) {                       // canyon
-        float carve = 1.0 - mountains;
-        return clamp(0.6 + base01 * 0.2 - carve * strength * 0.55, 0.0, 1.0);
+    if (p.biome == 3) {                       // canyon — zinapoyali mesa + tor o'yiqlar
+        float terraces = 6.0;
+        float plat = 0.45 + base01 * 0.4;
+        float stepped = floor(plat * terraces) / terraces;
+        plat = stepped * 0.8 + plat * 0.2;
+        float m = clamp((mountains - 0.55) / 0.25, 0.0, 1.0);
+        float channel = m * m * (3.0 - 2.0 * m);
+        return clamp(plat - channel * strength * 0.8, 0.0, 1.0);
     }
     if (p.biome == 4) {                       // volcano
         return clamp(base01 * 0.3 + mountains * strength, 0.0, 1.0);
