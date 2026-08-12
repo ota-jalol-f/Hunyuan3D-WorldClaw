@@ -25,6 +25,7 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | 4. Refine (agentli sikl) | `RefinementAgent` / Nano multimodal | AICore | Faza 2: sikl ishlaydi |
 | + Teksturalar (generativ) | `TextureGenerator` | NPU (Faza 2) | procedural zaxira |
 | + Ko'rinish kanallari | depth / normal / instance | GPU G-bufer | referens tayyor |
+| + Generativ mesh | `MeshFactory` / `mesh` | CPU (NPU keyin) | procedural shakllar |
 | + 3D eksport (glTF) | `WorldExporter` / `gltf` | — | .glb, istalgan ko'ruvchi |
 | + Izometrik 3D preview | `iso` | — | referens (Godotsiz) |
 
@@ -85,9 +86,16 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
   (`evaluate_scene`) ulash uchun tayyor.
 - **Faza 3** — on-device generativ mesh, dunyoni saqlash/eksport (glTF).
 
-- **Faza 3** ⏳ (qisman) — **3D eksport va ko'rish tayyor**: `.glb` eksport
-  (`WorldExporter` / `gltf`) va izometrik 3D preview (`iso`). Qolgani:
-  on-device generativ mesh (image-to-3D) — R&D, primitivlarni almashtiradi.
+- **Faza 3** ⏳ (davom etmoqda):
+  - **3D eksport va ko'rish** ✅ — `.glb` eksport (`WorldExporter` / `gltf`),
+    izometrik 3D preview (`iso`).
+  - **Generativ mesh** ✅ (procedural) — `mesh.py` / `MeshFactory.gd`:
+    primitiv konus/quti o'rniga haqiqiy shakllar (shoxli daraxt, tomли uy,
+    qirrali tosh, qo'lли kaktus…), seed variatsiyasi, variantlar ulashiladi.
+  - **Neyron image-to-3D** ⏳ — NPU distillangan model (`neural_mesh` stub).
+    Eng og'ir, R&D qismi; procedural backend hozir ishlaydi.
+
+Mesh shakllarini ko'rish: `render_mesh_lineup` (referens) yoki `.glb` ni oching.
 
 ### Faza 2–3 ni sinash
 

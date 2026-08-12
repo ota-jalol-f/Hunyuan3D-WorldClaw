@@ -142,3 +142,59 @@ def render_iso(
         _tri(fb, zb, width, H, br, tl, tr, col)
 
     return width, H, fb
+
+
+def _shade(color, ny):
+    light = 0.55 + 0.45 * max(0.0, ny * 0.5 + 0.5)
+    return (min(255, int(color[0] * 255 * light)),
+            min(255, int(color[1] * 255 * light)),
+            min(255, int(color[2] * 255 * light)))
+
+
+def render_mesh_lineup(kinds: list[str], *, seed: int = 0, width: int = 980,
+                       obj_scale: float = 1.7, scale: float = 66.0):
+    """Har turdan bitta generativ meshni gorizontal qatorда, o'z platformasida
+    rasterlaydi — haqiqiy generativ 3D shakllarni ko'rsatadi (primitiv emas)."""
+    from .mesh import generate
+
+    H = int(width * 0.42)
+    fb = bytearray(width * H * 3)
+    for py in range(H):                       # osmon foni
+        t = py / H
+        r = int(150 + 60 * (1 - t)); g = int(180 + 50 * (1 - t)); bl = int(210 + 30 * (1 - t))
+        for px in range(width):
+            j = (py * width + px) * 3
+            fb[j] = r; fb[j + 1] = g; fb[j + 2] = bl
+    zb = [1e18] * (width * H)
+
+    n = len(kinds)
+    spacing = 1.5
+    ox = width * 0.5
+    oy = H * 0.66
+
+    for i, kind in enumerate(kinds):
+        t = (i - (n - 1) * 0.5) * spacing
+        bx, bz = t, -t                        # gorizontal qator (x = -z chizig'i)
+
+        # kichik platforma
+        s = 0.5
+        plat = [(bx - s, 0, bz - s), (bx + s, 0, bz - s), (bx - s, 0, bz + s), (bx + s, 0, bz + s)]
+        pp = [_project(*v, scale, ox, oy) for v in plat]
+        _tri(fb, zb, width, H, pp[0], pp[2], pp[1], (118, 122, 118))
+        _tri(fb, zb, width, H, pp[1], pp[2], pp[3], (118, 122, 118))
+
+        parts = generate(kind, seed + i * 131)
+        for part in parts:
+            pos, nrm, idxs = part.positions, part.normals, part.indices
+            for tri in range(0, len(idxs), 3):
+                tri_pts = []
+                ny_sum = 0.0
+                for k in range(3):
+                    vi = idxs[tri + k]
+                    vx, vy, vz = pos[vi]
+                    ny_sum += nrm[vi][1]
+                    tri_pts.append(_project(bx + vx * obj_scale, vy * obj_scale,
+                                            bz + vz * obj_scale, scale, ox, oy))
+                _tri(fb, zb, width, H, tri_pts[0], tri_pts[1], tri_pts[2],
+                     _shade(part.color, ny_sum / 3.0))
+    return width, H, fb

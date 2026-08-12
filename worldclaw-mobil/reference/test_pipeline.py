@@ -225,6 +225,25 @@ def test_gltf_export() -> None:
     os.remove(path)
 
 
+def test_mesh_generators() -> None:
+    from worldclaw.mesh import generate, variants, _GENERATORS
+    for kind in _GENERATORS:
+        parts = generate(kind, 1)
+        tris = sum(len(p.indices) // 3 for p in parts)
+        verts = sum(len(p.positions) for p in parts)
+        ok_norm = all(len(p.normals) == len(p.positions) for p in parts)
+        ok_idx = all(max(p.indices) < len(p.positions) for p in parts if p.indices)
+        check(f"mesh '{kind}' geometriya", tris > 0 and verts > 0 and ok_norm and ok_idx,
+              f"tris={tris} verts={verts}")
+    a = generate("tree", 5)
+    b = generate("tree", 5)
+    ta = sum(len(p.positions) for p in a)
+    tb = sum(len(p.positions) for p in b)
+    check("mesh determinlashgan", ta == tb)
+    vs = variants("house", count=4, seed=1)
+    check("variantlar soni", len(vs) == 4)
+
+
 def test_iso_render() -> None:
     from worldclaw import generate_world
     from worldclaw.iso import render_iso
@@ -252,6 +271,7 @@ def main() -> int:
         ("refine determinizm", test_refine_deterministic),
         ("generativ tekstura", test_texture),
         ("ko'rinish kanallari", test_channels),
+        ("generativ mesh", test_mesh_generators),
         ("glTF eksport", test_gltf_export),
         ("izometrik render", test_iso_render),
     ]

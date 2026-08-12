@@ -77,18 +77,34 @@ static func compute_placements(plan: Dictionary, heights: PackedFloat32Array) ->
 	return out
 
 
+const VARIANTS := 4   # tur bo'yicha generativ mesh variantlari (ulashiladi)
+
 ## Tayyor joylashuvlardan MultiMesh instancelarini quradi (refine natijasi uchun).
+## Generativ mesh variantlari nusxalar orasида ulashiladi (kam chizish, xilma-xil).
 func build_instances(placements: Array) -> int:
 	clear()
-	var by_kind: Dictionary = {}
+	# (kind, variant) -> transformlar
+	var groups: Dictionary = {}
 	for p: Dictionary in placements:
 		var k: String = p.kind
-		if not by_kind.has(k):
-			by_kind[k] = [] as Array[Transform3D]
-		by_kind[k].append(p.xform)
-	for kind: String in by_kind:
-		_build_multimesh(kind, by_kind[kind])
+		var origin: Vector3 = p.xform.origin
+		var vi := (hash(Vector2(round(origin.x * 100), round(origin.z * 100))) & 0x7FFFFFFF) % VARIANTS
+		var gkey := "%s|%d" % [k, vi]
+		if not groups.has(gkey):
+			groups[gkey] = {"kind": k, "vi": vi, "xforms": [] as Array[Transform3D]}
+		groups[gkey].xforms.append(p.xform)
+
+	for gkey: String in groups:
+		var g: Dictionary = groups[gkey]
+		var mesh := _variant_mesh(g.kind, g.vi)
+		_build_multimesh(g.kind, mesh, g.xforms)
 	return placements.size()
+
+
+func _variant_mesh(kind: String, vi: int) -> Mesh:
+	if asset_scenes.has(kind):          # tashqi asset berilgan bo'lsa
+		return asset_scenes[kind]
+	return MeshFactory.generate(kind, (hash(kind) & 0xFFFF) + vi * 7919)
 
 
 ## Qulaylik: rejadan hisoblab, darhol quradi.
@@ -96,12 +112,12 @@ func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
 	return build_instances(compute_placements(plan, heights))
 
 
-func _build_multimesh(kind: String, xforms: Array[Transform3D]) -> void:
+func _build_multimesh(kind: String, mesh: Mesh, xforms: Array[Transform3D]) -> void:
 	if xforms.is_empty():
 		return
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = _mesh_for(kind)
+	mm.mesh = mesh
 	mm.instance_count = xforms.size()
 	for i in xforms.size():
 		mm.set_instance_transform(i, xforms[i])
@@ -109,36 +125,3 @@ func _build_multimesh(kind: String, xforms: Array[Transform3D]) -> void:
 	inst.name = "scatter_%s" % kind
 	inst.multimesh = mm
 	add_child(inst)
-
-
-## Faza 1 primitivlari — asset kutubxonasi ulanmaguncha o'rin egallaydi.
-func _mesh_for(kind: String) -> Mesh:
-	if asset_scenes.has(kind):
-		return asset_scenes[kind]
-	match kind:
-		"tree", "palm":
-			var cone := CylinderMesh.new()
-			cone.top_radius = 0.0
-			cone.bottom_radius = 1.2
-			cone.height = 4.0
-			return cone
-		"house":
-			return BoxMesh.new()
-		"rock":
-			var s := SphereMesh.new()
-			s.radius = 0.8
-			s.height = 1.2
-			return s
-		"cactus":
-			var c := CapsuleMesh.new()
-			c.radius = 0.4
-			c.height = 3.0
-			return c
-		"torch":
-			var t := CylinderMesh.new()
-			t.top_radius = 0.15
-			t.bottom_radius = 0.15
-			t.height = 2.0
-			return t
-		_:
-			return BoxMesh.new()
