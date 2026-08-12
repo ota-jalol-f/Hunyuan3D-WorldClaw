@@ -100,11 +100,14 @@ def generate_heightmap(spec: TerrainSpec) -> Heightmap:
                 dome = _clamp(1.15 - dist)  # keng markaz plato + silliq chekka
                 h = dome * (0.5 + mountains * spec.mountain_strength)
                 h += (base * 0.5 + 0.5) * 0.05  # yengil tekstura
-                hm.data[y * size + x] = _clamp(h)
-                continue
+            else:
+                h = _biome_shape(spec.biome, base, mountains, spec.mountain_strength)
 
-            hm.data[y * size + x] = _biome_shape(
-                spec.biome, base, mountains, spec.mountain_strength
+            # Mayda detal qatlami — yuqori chastota, ko'rinadigan g'adir-budurlik.
+            detail = fbm(
+                base_noise, nx * base_freq * 3.0, ny * base_freq * 3.0,
+                octaves=4, gain=spec.roughness,
             )
+            hm.data[y * size + x] = _clamp(h + detail * 0.06)
 
     return hm

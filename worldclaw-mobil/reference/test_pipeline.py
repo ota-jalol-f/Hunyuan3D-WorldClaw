@@ -255,6 +255,85 @@ def test_iso_render() -> None:
     check("iso relyef chizilgan", len(sample) > 5, f"ranglar={len(sample)}")
 
 
+def _flat_field(height_norm=0.3, size=32):
+    from worldclaw.terrain import Heightmap
+    from worldclaw.scene_plan import TerrainSpec
+    from worldclaw.physics import TerrainField
+    spec = TerrainSpec(biome="grass", size=size, world_scale=400.0, height_scale=60.0)
+    hm = Heightmap(size, spec)
+    for i in range(len(hm.data)):
+        hm.data[i] = height_norm
+    return TerrainField(hm), height_norm * spec.height_scale
+
+
+def test_gravity_freefall() -> None:
+    from worldclaw.physics import Body, TerrainField, simulate, GRAVITY
+    field_, _ = _flat_field(0.0)
+    b = Body(kind="rock", x=0, y=1000.0, z=0, radius=1.0)
+    dt = 1.0 / 120.0
+    steps = 60                              # 0.5 s
+    for _ in range(steps):
+        from worldclaw.physics import step
+        step([b], field_, dt)
+    t = steps * dt
+    expected_drop = 0.5 * GRAVITY * t * t
+    actual_drop = 1000.0 - b.y
+    check("tortishish 9.81 (erkin tushish)", abs(actual_drop - expected_drop) / expected_drop < 0.05,
+          f"kutilgan={expected_drop:.3f} haqiqiy={actual_drop:.3f}")
+
+
+def test_settle_on_terrain() -> None:
+    from worldclaw import generate_world
+    from worldclaw.physics import TerrainField, drop_bodies_from_placements, simulate
+    r = generate_world("yashil vodiy o'rmon", size=96)
+    field_ = TerrainField(r.heightmap)
+    bodies = drop_bodies_from_placements(r.placements, field_, drop_height=30.0, limit=40)
+    stats = simulate(bodies, field_, max_steps=3000)
+    check("jismlar cho'kdi", stats.settled == len(bodies), f"{stats.settled}/{len(bodies)}")
+    # Har jism yer sirtida (radiusда) turadi
+    ok_rest = True
+    for b in bodies:
+        g = field_.height_at(b.x, b.z)
+        if not (g - 0.5 <= b.y - b.radius <= g + 1.0):
+            ok_rest = False
+    check("jismlar yer sirtida turadi", ok_rest)
+
+
+def test_no_tunneling() -> None:
+    from worldclaw import generate_world
+    from worldclaw.physics import TerrainField, drop_bodies_from_placements, simulate
+    r = generate_world("qorli tog'lar", size=96)
+    field_ = TerrainField(r.heightmap)
+    bodies = drop_bodies_from_placements(r.placements, field_, drop_height=60.0, limit=30)
+    stats = simulate(bodies, field_, max_steps=3000)
+    check("relyefdan o'tib ketmaydi (tunnel yo'q)", stats.max_penetration < 3.0,
+          f"max_pen={stats.max_penetration:.3f}")
+
+
+def test_restitution_energy_loss() -> None:
+    from worldclaw.physics import Body, step
+    field_, ground = _flat_field(0.3)
+    drop_h = 40.0
+    b = Body(kind="rock", x=0, y=ground + 1.0 + drop_h, z=0, radius=1.0)
+    dt = 1.0 / 240.0
+    ys = []
+    for _ in range(3000):
+        step([b], field_, dt)
+        ys.append(b.y)
+        if b.resting:
+            break
+    # Birinchi urilishdan keyin cho'qqi topamiz
+    contacted = False
+    bounce_peak = ground
+    for i in range(1, len(ys)):
+        if ys[i] <= ground + 1.2:
+            contacted = True
+        if contacted and ys[i] > ys[i - 1]:
+            bounce_peak = max(bounce_peak, ys[i])
+    check("qaytish energiya yo'qotadi (restitution<1)",
+          bounce_peak - ground < drop_h * 0.5, f"sakrash={bounce_peak-ground:.2f} < {drop_h*0.5}")
+
+
 def main() -> int:
     tests = [
         ("noise", test_noise_deterministic),
@@ -274,6 +353,10 @@ def main() -> int:
         ("generativ mesh", test_mesh_generators),
         ("glTF eksport", test_gltf_export),
         ("izometrik render", test_iso_render),
+        ("tortishish (erkin tushish)", test_gravity_freefall),
+        ("relyefda cho'kish", test_settle_on_terrain),
+        ("tunnel yo'q", test_no_tunneling),
+        ("qaytish energiyasi", test_restitution_energy_loss),
     ]
     for title, fn in tests:
         print(f"[{title}]")

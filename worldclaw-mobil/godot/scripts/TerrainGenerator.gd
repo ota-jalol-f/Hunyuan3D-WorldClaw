@@ -125,10 +125,11 @@ static func generate_heightmap(spec: Dictionary) -> PackedFloat32Array:
 				var dome := clampf(1.15 - dist, 0.0, 1.0)
 				h = dome * (0.5 + mountains * strength)
 				h += (base * 0.5 + 0.5) * 0.05
-				h = clampf(h, 0.0, 1.0)
 			else:
 				h = _biome_shape(biome, base, mountains, strength)
-			out[y * size + x] = h
+			# Mayda detal qatlami (yuqori chastota) — referens bilan bir xil.
+			var detail := _fbm(base_noise, nx * base_freq * 3.0, ny * base_freq * 3.0, 4, roughness)
+			out[y * size + x] = clampf(h + detail * 0.06, 0.0, 1.0)
 	return out
 
 

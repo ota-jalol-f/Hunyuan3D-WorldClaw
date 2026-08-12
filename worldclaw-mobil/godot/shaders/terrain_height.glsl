@@ -109,10 +109,11 @@ void main() {
         float dome = clamp(1.15 - length(c), 0.0, 1.0);
         h = dome * (0.5 + mountains * p.mountain_strength);
         h += (base * 0.5 + 0.5) * 0.05;
-        h = clamp(h, 0.0, 1.0);
     } else {
         h = biome_shape(base, mountains, p.mountain_strength);
     }
 
-    data[gy * uint(p.size) + gx] = h;
+    // Mayda detal qatlami (yuqori chastota) — CPU yo'li bilan bir xil.
+    float detail = fbm(n * 3.0, p.seed, p.roughness);
+    data[gy * uint(p.size) + gx] = clamp(h + detail * 0.06, 0.0, 1.0);
 }

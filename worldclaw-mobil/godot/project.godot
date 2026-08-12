@@ -29,3 +29,9 @@ textures/vram_compression/import_etc2_astc=true
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true
+
+[physics]
+
+; Yer tortishish tezlanishi (referens physics.py bilan mos).
+3d/default_gravity=9.81
+3d/default_gravity_vector=Vector3(0, -1, 0)

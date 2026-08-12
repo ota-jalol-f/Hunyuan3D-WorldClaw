@@ -26,6 +26,7 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | + Teksturalar (generativ) | `TextureGenerator` | NPU (Faza 2) | procedural zaxira |
 | + Ko'rinish kanallari | depth / normal / instance | GPU G-bufer | referens tayyor |
 | + Generativ mesh | `MeshFactory` / `mesh` | CPU (NPU keyin) | procedural shakllar |
+| + Fizika (Yer) | `WorldPhysics` / `physics` | fizika serveri | 9.81, to'qnashuv, cho'kish |
 | + 3D eksport (glTF) | `WorldExporter` / `gltf` | — | .glb, istalgan ko'ruvchi |
 | + Izometrik 3D preview | `iso` | — | referens (Godotsiz) |
 
@@ -94,8 +95,13 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
     qirrali tosh, qo'lли kaktus…), seed variatsiyasi, variantlar ulashiladi.
   - **Neyron image-to-3D** ⏳ — NPU distillangan model (`neural_mesh` stub).
     Eng og'ir, R&D qismi; procedural backend hozir ishlaydi.
+  - **Yer fizikasi** ✅ — `physics.py` / `WorldPhysics.gd`: tortishish 9.81,
+    material zichligi/ishqalanish/qaytish, relyef to'qnashuvi (HeightMapShape3D),
+    dinamik jismlar (dumalab tushadi), qiyalikда sirg'anish, cho'kish.
+  - **Relyef detali** ✅ — yuqori chastotali detal qatlami (uch impl bir xil).
 
 Mesh shakllarini ko'rish: `render_mesh_lineup` (referens) yoki `.glb` ni oching.
+Fizikани sinash: `test_pipeline.py` (erkin tushish, cho'kish, tunnel, qaytish).
 
 ### Faza 2–3 ni sinash
 

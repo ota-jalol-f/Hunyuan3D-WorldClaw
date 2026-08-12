@@ -11,6 +11,7 @@ extends Node3D
 @export var use_aicore: bool = true
 @export var use_gpu_terrain: bool = true   # Faza 1.5: compute shader, aks holda CPU
 @export var use_refine: bool = true        # Faza 2: agentli sifat sikli
+@export var use_physics: bool = true       # Faza 3: relyef to'qnashuvi + dinamik jismlar
 
 @onready var _terrain_holder: Node3D = $TerrainHolder
 @onready var _scatter: ScatterSystem = $ScatterSystem
@@ -69,7 +70,16 @@ func generate(prompt: String) -> void:
 
 	_show_terrain(mesh, plan)
 	var count := _scatter.build_instances(placements)
-	_set_status("%s • %d obyekt" % [plan.terrain.get("biome", "?"), count])
+
+	if use_physics:
+		# Relyef to'qnashuv jismi + bir necha dinamik (dumalab tushadigan) tosh.
+		var body := WorldPhysics.build_terrain_body(heights, plan.terrain)
+		_terrain_holder.add_child(body)
+		for rb in WorldPhysics.spawn_dynamic(placements, "rock", 24):
+			_terrain_holder.add_child(rb)
+
+	_set_status("%s • %d obyekt%s" % [
+		plan.terrain.get("biome", "?"), count, "  • fizika" if use_physics else ""])
 
 
 ## Intent bosqichi — AICore bo'lsa u orqali, aks holda zaxira rejalovchi.
