@@ -133,6 +133,69 @@ def test_full_pipeline() -> None:
     check("pipeline vaqtlarni o'lchaydi", "terrain_ms" in r.timings_ms)
 
 
+def test_critic() -> None:
+    from worldclaw import evaluate
+    r = generate_world("yashil vodiy o'rmon", size=96)
+    crit = evaluate(r)
+    check("critic sifat [0,1]", 0.0 <= crit.score <= 1.0, f"score={crit.score}")
+    check("critic metrikalar bor", "populated" in crit.metrics and "buildable" in crit.metrics)
+
+
+def test_refine_improves() -> None:
+    from worldclaw import evaluate, refine
+    from worldclaw.pipeline import build_from_plan
+    from worldclaw.scene_plan import plan_from_prompt
+    from dataclasses import replace
+
+    # Ataylab yomon reja — juda siyrak obyektlar.
+    plan = plan_from_prompt("qorli qishloq tog'lar", size=128)
+    bad_plan = replace(plan, scatter=[replace(r, density=r.density * 0.02) for r in plan.scatter])
+    bad_world = build_from_plan(bad_plan)
+    before = evaluate(bad_world).score
+
+    rr = refine("qorli qishloq tog'lar", size=128, initial=bad_world, max_iters=6)
+    after = rr.final_score
+
+    check("refine sifatni oshiradi", after > before, f"{before:.3f} -> {after:.3f}")
+    check("refine sikl tarixi bor", rr.iterations >= 1)
+    check("refine sifat chegarasига yaqinlashadi", after >= 0.7, f"yakuniy={after:.3f}")
+
+
+def test_refine_deterministic() -> None:
+    from worldclaw import refine
+    a = refine("cho'l sahro kaktus", size=96, max_iters=4)
+    b = refine("cho'l sahro kaktus", size=96, max_iters=4)
+    check("refine determinlashgan", a.final_score == b.final_score
+          and a.iterations == b.iterations)
+
+
+def test_texture() -> None:
+    from worldclaw.texture import generate_material, generate_biome_set
+    w, h, px = generate_material("snow", size=64, seed=1)
+    check("tekstura o'lchami", w == 64 and h == 64 and len(px) == 64 * 64 * 3)
+    _, _, px2 = generate_material("snow", size=64, seed=1)
+    check("tekstura determinlashgan", px == px2)
+    _, _, px3 = generate_material("snow", size=64, seed=2)
+    check("boshqa seed -> boshqa tekstura", px != px3)
+    mats = generate_biome_set("volcano", size=32)
+    check("biom material to'plami", "lava" in mats and "rock" in mats)
+
+
+def test_channels() -> None:
+    from worldclaw import generate_world
+    from worldclaw.channels import render_depth, render_normal, render_instance
+    r = generate_world("yashil vodiy", size=64)
+    dw, dh, dpx = render_depth(r.heightmap, upscale=1)
+    check("depth o'lchami", dw == 64 and len(dpx) == 64 * 64 * 3)
+    nw, nh, npx = render_normal(r.heightmap, upscale=1)
+    check("normal o'lchami", nw == 64 and len(npx) == 64 * 64 * 3)
+    iw, ih, ipx = render_instance(r.heightmap, r.placements, upscale=1)
+    check("instance o'lchami", iw == 64 and len(ipx) == 64 * 64 * 3)
+    # depth kulrang: R==G==B har pikselда
+    grayscale = all(dpx[i] == dpx[i + 1] == dpx[i + 2] for i in range(0, len(dpx), 3))
+    check("depth kulrang", grayscale)
+
+
 def main() -> int:
     tests = [
         ("noise", test_noise_deterministic),
@@ -144,6 +207,11 @@ def main() -> int:
         ("scatter qoidalari", test_scatter_respects_rules),
         ("kesh", test_cache),
         ("to'liq pipeline", test_full_pipeline),
+        ("critic baholovchi", test_critic),
+        ("refine sifatni oshiradi", test_refine_improves),
+        ("refine determinizm", test_refine_deterministic),
+        ("generativ tekstura", test_texture),
+        ("ko'rinish kanallari", test_channels),
     ]
     for title, fn in tests:
         print(f"[{title}]")

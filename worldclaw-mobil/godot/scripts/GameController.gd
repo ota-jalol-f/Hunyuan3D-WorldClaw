@@ -10,6 +10,7 @@ extends Node3D
 @export var terrain_size: int = 256
 @export var use_aicore: bool = true
 @export var use_gpu_terrain: bool = true   # Faza 1.5: compute shader, aks holda CPU
+@export var use_refine: bool = true        # Faza 2: agentli sifat sikli
 
 @onready var _terrain_holder: Node3D = $TerrainHolder
 @onready var _scatter: ScatterSystem = $ScatterSystem
@@ -35,26 +36,39 @@ func generate(prompt: String) -> void:
 		_set_status("Xato: reja tuzilmadi")
 		return
 
-	var key := "%s|%d|%d" % [prompt, plan.terrain.get("seed", 0), terrain_size]
+	var key := "%s|%d|%d|%s" % [prompt, plan.terrain.get("seed", 0), terrain_size, str(use_refine)]
 	var heights: PackedFloat32Array
 	var mesh: ArrayMesh
+	var placements: Array
 	if _cache.has(key):
 		var c: Dictionary = _cache[key]
 		heights = c.heights
 		mesh = c.mesh
+		placements = c.placements
+		plan = c.plan
 		_set_status("Keshdan yuklandi")
 	else:
-		_set_status("Relyef qurilmoqda…")
-		heights = PackedFloat32Array()
-		if use_gpu_terrain:
-			heights = TerrainCompute.try_generate(plan.terrain)   # GPU (Faza 1.5)
-		if heights.is_empty():
-			heights = TerrainGenerator.generate_heightmap(plan.terrain)  # CPU zaxira
+		if use_refine:
+			# Faza 2 — agentli sifat sikli (relyef + scatter tuzatiladi).
+			_set_status("Sifat sikli…")
+			var refined := RefinementAgent.refine(plan)
+			plan = refined.plan
+			heights = refined.heights
+			placements = refined.placements
+			_set_status("Refine: %d takror • sifat %.2f" % [refined.iterations, refined.score])
+		else:
+			_set_status("Relyef qurilmoqda…")
+			heights = PackedFloat32Array()
+			if use_gpu_terrain:
+				heights = TerrainCompute.try_generate(plan.terrain)   # GPU (Faza 1.5)
+			if heights.is_empty():
+				heights = TerrainGenerator.generate_heightmap(plan.terrain)  # CPU zaxira
+			placements = ScatterSystem.compute_placements(plan, heights)
 		mesh = TerrainGenerator.build_mesh(heights, plan.terrain)
-		_cache[key] = {"heights": heights, "plan": plan, "mesh": mesh}
+		_cache[key] = {"heights": heights, "plan": plan, "mesh": mesh, "placements": placements}
 
 	_show_terrain(mesh, plan)
-	var count := _scatter.scatter(plan, heights)
+	var count := _scatter.build_instances(placements)
 	_set_status("%s • %d obyekt" % [plan.terrain.get("biome", "?"), count])
 
 

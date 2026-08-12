@@ -41,6 +41,33 @@ class AICoreBridge(godot: Godot) : GodotPlugin(godot) {
         }
     }
 
+    /**
+     * Faza 2 — refine sikli uchun sifat bahosi (Gemini Nano multimodal).
+     *
+     * Godot renderni PNG sifatida beradi va joriy metrikalarni uzatadi. Nano
+     * renderni "ko'rib" sifat/kamchiliklarni qaytaradi. Bu skeletda oddiy
+     * zaxira: metrikadagi `score` bo'yicha qaror. Chiqish JSON:
+     *   { "accept": bool, "score": float, "notes": [..], "density_scale", "water_delta" }
+     */
+    @UsedByGodot
+    fun evaluate_scene(metricsJson: String, pngPath: String): String {
+        return try {
+            // TODO(Faza 2): Nano multimodal — pngPath rasmini + metricsJson ni
+            // yuborib sifatli fikr olish. Hozircha metrikaga asoslangan zaxira:
+            val m = JSONObject(metricsJson)
+            val score = m.optDouble("score", 0.0)
+            JSONObject()
+                .put("accept", score >= 0.85)
+                .put("score", score)
+                .put("notes", JSONArray())
+                .put("density_scale", m.optDouble("density_scale", 1.0))
+                .put("water_delta", m.optDouble("water_delta", 0.0))
+                .toString()
+        } catch (t: Throwable) {
+            JSONObject().put("accept", true).put("score", 1.0).toString()
+        }
+    }
+
     /** Nano uchun ko'rsatma — faqat sxemaga mos JSON chiqarishi shart. */
     private fun buildPrompt(userPrompt: String, size: Int): String = """
         Siz 3D dunyo rejalovchisiz. Foydalanuvchi tavsifidan FAQAT JSON qaytaring.

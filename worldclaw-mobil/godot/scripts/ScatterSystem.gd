@@ -26,9 +26,9 @@ func clear() -> void:
 		child.queue_free()
 
 
-## Rejadagi barcha qoidalar bo'yicha obyektlarni joylashtiradi.
-func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
-	clear()
+## Mesh qurmasdan joylashuvlarni hisoblaydi (refine sikli uchun "quruq hisob").
+## Har element: {kind, wx, wy, wz, height, xform}.  Referens scatter.py nusxasi.
+static func compute_placements(plan: Dictionary, heights: PackedFloat32Array) -> Array:
 	var spec: Dictionary = plan.get("terrain", {})
 	var size: int = spec.get("size", 256)
 	var world_scale: float = spec.get("world_scale", 400.0)
@@ -36,9 +36,8 @@ func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
 	var water: float = spec.get("water_level", 0.28)
 	var seed: int = spec.get("seed", 0)
 	var cell := world_scale / float(size)
-	var half := world_scale * 0.5
 
-	var total := 0
+	var out: Array = []
 	for rule: Dictionary in plan.get("scatter", []):
 		var kind: String = rule.get("kind", "rock")
 		var density: float = rule.get("density", 0.02)
@@ -47,8 +46,6 @@ func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
 		var max_slope: float = rule.get("max_slope", 1.0)
 		var avoid_water: bool = rule.get("avoid_water", true)
 
-		var transforms := PackedVector3Array()
-		var xforms: Array[Transform3D] = []
 		var rng := _Rng.new(seed ^ (hash(kind) & 0xFFFFFFFF))
 		var step := maxi(1, int(round(pow(1.0 / maxf(density, 1e-4), 0.5))))
 		var accept := minf(1.0, density * step * step)
@@ -71,13 +68,32 @@ func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
 							var sc := 0.75 + rng.unit() * 0.6
 							var yaw := rng.unit() * TAU
 							var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * sc)
-							xforms.append(Transform3D(basis, Vector3(wx, wy, wz)))
+							out.append({
+								"kind": kind, "wx": wx, "wy": wy, "wz": wz,
+								"height": h, "xform": Transform3D(basis, Vector3(wx, wy, wz)),
+							})
 				gx += step
 			gy += step
+	return out
 
-		_build_multimesh(kind, xforms)
-		total += xforms.size()
-	return total
+
+## Tayyor joylashuvlardan MultiMesh instancelarini quradi (refine natijasi uchun).
+func build_instances(placements: Array) -> int:
+	clear()
+	var by_kind: Dictionary = {}
+	for p: Dictionary in placements:
+		var k: String = p.kind
+		if not by_kind.has(k):
+			by_kind[k] = [] as Array[Transform3D]
+		by_kind[k].append(p.xform)
+	for kind: String in by_kind:
+		_build_multimesh(kind, by_kind[kind])
+	return placements.size()
+
+
+## Qulaylik: rejadan hisoblab, darhol quradi.
+func scatter(plan: Dictionary, heights: PackedFloat32Array) -> int:
+	return build_instances(compute_placements(plan, heights))
 
 
 func _build_multimesh(kind: String, xforms: Array[Transform3D]) -> void:

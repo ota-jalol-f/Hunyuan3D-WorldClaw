@@ -98,6 +98,22 @@ def generate_world(
     return result
 
 
+def build_from_plan(plan: ScenePlan) -> WorldResult:
+    """Tayyor rejadan dunyoni quradi (Intent bosqichisiz).
+
+    Refine sikli rejani tuzatib qayta chaqirish uchun ishlatadi.
+    """
+    plan.validate()
+    timings: dict[str, float] = {}
+    t0 = time.perf_counter()
+    hm = generate_heightmap(plan.terrain)
+    timings["terrain_ms"] = (time.perf_counter() - t0) * 1000
+    t0 = time.perf_counter()
+    placements = scatter_objects(plan, hm)
+    timings["scatter_ms"] = (time.perf_counter() - t0) * 1000
+    return WorldResult(plan=plan, heightmap=hm, placements=placements, timings_ms=timings)
+
+
 def render_world_png(result: WorldResult, path: str, *, upscale: int = 3) -> tuple[int, int]:
     """WorldResult'ni yuqoridan ko'rinish PNGiga chizadi."""
     from .pngwriter import write_rgb_png

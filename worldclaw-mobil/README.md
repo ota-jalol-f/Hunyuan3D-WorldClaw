@@ -22,7 +22,9 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | 1. Intent (niyat → reja) | AICore / Gemini Nano | AICore | Faza 1: oflayn zaxira rejalovchi |
 | 2. Terrain (relyef) | `TerrainCompute` / `TerrainGenerator` | GPU compute + CPU zaxira | Faza 1.5: GPU yo'li ulandi |
 | 3. Assets + Scatter | `ScatterSystem` | GPU instancing | Faza 1: primitiv geometriya |
-| 4. Refine (agentli sikl) | Nano multimodal | AICore | Faza 2 |
+| 4. Refine (agentli sikl) | `RefinementAgent` / Nano multimodal | AICore | Faza 2: sikl ishlaydi |
+| + Teksturalar (generativ) | `TextureGenerator` | NPU (Faza 2) | procedural zaxira |
+| + Ko'rinish kanallari | depth / normal / instance | GPU G-bufer | referens tayyor |
 
 Relyefning **noise funksiyasi Python, GDScript va GLSL'da aynan bir xil**
 (32-bitlik bit-hash), shuning uchun CPU va GPU yo'llari bir xil dunyoni beradi —
@@ -75,8 +77,19 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
 - **Faza 1** ✅ — reja → relyef → obyektlar → ko'rish (referens 27/27 test).
 - **Faza 1.5** ✅ (ulandi) — `TerrainCompute.gd` + `terrain_height.glsl` GPU
   compute yo'li, CPU zaxira bilan. *Godot editorda va qurilmada sinash kerak.*
-- **Faza 2** — NPU tekstura generatsiyasi + Nano multimodal refine sikli.
+- **Faza 2** ✅ (referens) — agentli refine sikli (`RefinementAgent` /
+  `critic` + `refine`), generativ teksturalar (`TextureGenerator` / `texture`),
+  ko'rinish kanallari (depth/normal/instance). Nano multimodal ko'prigi
+  (`evaluate_scene`) ulash uchun tayyor.
 - **Faza 3** — on-device generativ mesh, dunyoni saqlash/eksport (glTF).
+
+### Faza 2 ni sinash
+
+```bash
+cd reference
+python3 generate_demo.py --refine "qorli qishloq"        # agentli sifat sikli
+python3 generate_demo.py --channels --all --out _out     # depth/normal/instance + teksturalar
+```
 
 ### Godot skripting eslatmasi
 
