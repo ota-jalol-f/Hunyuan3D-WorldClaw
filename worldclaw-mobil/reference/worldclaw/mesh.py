@@ -229,10 +229,11 @@ def variants(kind: str, count: int = 4, seed: int = 0) -> list[list[Part]]:
     return [generate(kind, seed + i * 7919) for i in range(count)]
 
 
-def neural_mesh(kind: str, image=None, seed: int = 0):  # noqa: ARG001
-    """NPU image-to-3D backend (kelajak). Hozircha None — procedural ishlaydi.
+def neural_mesh(kind: str, image=None, seed: int = 0) -> list[Part] | None:
+    """Image-to-3D backend — obyekt tasviridan mesh.
 
-    Qurilmada bu yerga distillangan/kvantlangan model ulanadi (LiteRT + QNN):
-    obyekt rasmi -> mesh. Xotira/tezlik cheklovi tufayli Faza 3+ R&D.
+    `neural.py` ga topshiradi: qurilmada NPU distillangan model (Faza 3+), aks
+    holda visual hull rekonstruksiyasi (rasm -> siluet -> voksel -> mesh).
     """
-    return None
+    from . import neural
+    return neural.neural_mesh(kind, seed, image)

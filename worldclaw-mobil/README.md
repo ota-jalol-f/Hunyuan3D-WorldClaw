@@ -26,6 +26,8 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | + Teksturalar (generativ) | `TextureGenerator` | NPU (Faza 2) | procedural zaxira |
 | + Ko'rinish kanallari | depth / normal / instance | GPU G-bufer | referens tayyor |
 | + Generativ mesh | `MeshFactory` / `mesh` | CPU (NPU keyin) | procedural shakllar |
+| + Image-to-3D | `neural` | NPU (keyin) | visual hull rekonstruksiya |
+| + Generativ audio | `AudioDirector` / `audio` | CPU/DSP | biom soundscape + musiqa |
 | + Fizika (Yer) | `WorldPhysics` / `physics` | fizika serveri | 9.81, to'qnashuv, cho'kish |
 | + 3D eksport (glTF) | `WorldExporter` / `gltf` | — | .glb, istalgan ko'ruvchi |
 | + Izometrik 3D preview | `iso` | — | referens (Godotsiz) |
@@ -93,8 +95,12 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
   - **Generativ mesh** ✅ (procedural) — `mesh.py` / `MeshFactory.gd`:
     primitiv konus/quti o'rniga haqiqiy shakllar (shoxli daraxt, tomли uy,
     qirrali tosh, qo'lли kaktus…), seed variatsiyasi, variantlar ulashiladi.
-  - **Neyron image-to-3D** ⏳ — NPU distillangan model (`neural_mesh` stub).
-    Eng og'ir, R&D qismi; procedural backend hozir ishlaydi.
+  - **Image-to-3D** ✅ (klassik) — `neural.py`: rasm → siluet → voksel visual
+    hull → mesh. Neyron NPU model (`_neural_infer` stub) shu pipeline'ni
+    almashtiradi/silliqlaydi (R&D).
+  - **Generativ audio** ✅ — `audio.py` / `AudioDirector.gd`: biomga xos
+    ambient (shamol/to'lqin/gumburlash) + pentatonik melodiya + dron, sintez
+    (sample emas), determinlashgan.
   - **Yer fizikasi** ✅ — `physics.py` / `WorldPhysics.gd`: tortishish 9.81,
     material zichligi/ishqalanish/qaytish, relyef to'qnashuvi (HeightMapShape3D),
     dinamik jismlar (dumalab tushadi), qiyalikда sirg'anish, cho'kish.

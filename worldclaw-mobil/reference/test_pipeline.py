@@ -255,6 +255,40 @@ def test_iso_render() -> None:
     check("iso relyef chizilgan", len(sample) > 5, f"ranglar={len(sample)}")
 
 
+def test_audio() -> None:
+    from worldclaw.audio import generate_soundscape, RATE
+    s = generate_soundscape("grass", seed=1, seconds=2.0)
+    check("audio uzunligi to'g'ri", len(s) == int(2.0 * RATE))
+    check("audio int16 chegarasida", all(-32768 <= x <= 32767 for x in s[:2000]))
+    nonsilent = sum(1 for x in s if abs(x) > 300)
+    check("audio jim emas", nonsilent > len(s) * 0.3, f"non-silent={100*nonsilent//len(s)}%")
+    s2 = generate_soundscape("grass", seed=1, seconds=2.0)
+    check("audio determinlashgan", s == s2)
+    v = generate_soundscape("volcano", seed=1, seconds=2.0)
+    check("biomlar farq qiladi", s != v)
+
+
+def test_neural_image_to_3d() -> None:
+    from worldclaw.neural import neural_mesh, render_silhouettes, silhouette_iou, RES
+    from worldclaw.mesh import generate
+    # Rekonstruksiya mesh chiqaradi
+    recon = neural_mesh("house", 1)
+    tris = sum(len(p.indices) // 3 for p in recon)
+    check("image-to-3D mesh chiqaradi", tris > 0 and len(recon[0].positions) > 0, f"tris={tris}")
+    # Konveks shakl uchun siluet mos keladi (visual hull to'g'ri)
+    src = generate("house", 1)
+    ious = []
+    for view in ("front", "side", "top"):
+        a = render_silhouettes(src)[view]
+        b = render_silhouettes(recon)[view]
+        ious.append(silhouette_iou(a, b, RES))
+    check("rekonstruksiya siluetга mos (IoU)", min(ious) > 0.85, f"IoU={[round(i,2) for i in ious]}")
+    # Determinizm
+    r2 = neural_mesh("house", 1)
+    check("image-to-3D determinlashgan",
+          sum(len(p.indices) for p in recon) == sum(len(p.indices) for p in r2))
+
+
 def _flat_field(height_norm=0.3, size=32):
     from worldclaw.terrain import Heightmap
     from worldclaw.scene_plan import TerrainSpec
@@ -457,6 +491,8 @@ def main() -> int:
         ("generativ tekstura", test_texture),
         ("ko'rinish kanallari", test_channels),
         ("generativ mesh", test_mesh_generators),
+        ("neyron image-to-3D", test_neural_image_to_3d),
+        ("generativ audio", test_audio),
         ("glTF eksport", test_gltf_export),
         ("izometrik render", test_iso_render),
         ("tortishish (erkin tushish)", test_gravity_freefall),
