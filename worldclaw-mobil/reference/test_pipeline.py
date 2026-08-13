@@ -255,6 +255,57 @@ def test_iso_render() -> None:
     check("iso relyef chizilgan", len(sample) > 5, f"ranglar={len(sample)}")
 
 
+def test_lifecycle() -> None:
+    import statistics as st
+    from worldclaw.lifecycle import LifecycleSim, EnvState
+    sim = LifecycleSim(EnvState(biome="grass"), seed=3)
+    hist = sim.run(days=720, dt_days=0.05)
+    stable = [h for h in hist if h.day > 360]
+    veg = [h.vegetation for h in stable]
+    herb = [h.herbivores for h in stable]
+    pred = [h.predators for h in stable]
+    check("ekotizim yo'qolmaydi", min(veg) > 0.005 and min(herb) > 0.005 and min(pred) > 0.005)
+    check("ekotizim portlamaydi", max(veg) < 3 and max(herb) < 3 and max(pred) < 3)
+    check("populyatsiya tebranadi", (max(herb) - min(herb)) > 0.1 and (max(pred) - min(pred)) > 0.05)
+    summer = [h.vegetation for h in stable if h.season == "yoz"]
+    winter = [h.vegetation for h in stable if h.season == "qish"]
+    check("o'simlik yozда qishдан ko'p", st.mean(summer) > st.mean(winter))
+    check("tun/kun", EnvState(time_of_day=23).is_night and not EnvState(time_of_day=12).is_night)
+    sw = LifecycleSim(EnvState(biome="snow", day_of_year=310, time_of_day=3))
+    sw.step(0.01)
+    check("qishда sovuq (< 0°C)", sw.state.temperature < 0, f"T={sw.state.temperature:.1f}")
+
+
+def test_edit() -> None:
+    from worldclaw import generate_world
+    from worldclaw.edit import apply_edit
+    from worldclaw.lifecycle import EnvState
+    w = generate_world("yashil vodiy o'rmon uylar", size=96)
+    n0 = len(w.placements)
+
+    r = apply_edit(w, EnvState(biome="grass"), "ko'p daraxt o'rmon")
+    check("o'simlik tahriri = scatter", r.level == "scatter")
+    check("scatter relyefni QAYTA ISHLATADI", r.world.heightmap is w.heightmap)
+    check("daraxtlar ko'paydi", len(r.world.placements) > n0)
+    check("scatter tez (<200ms)", r.ms < 200, f"{r.ms:.0f}ms")
+
+    r2 = apply_edit(w, EnvState(biome="grass"), "toshqin ko'l")
+    check("suv tahriri = water", r2.level == "water")
+    check("water relyefni qayta ishlatadi", r2.world.heightmap is w.heightmap)
+    check("suv sathi oshdi", r2.world.plan.terrain.water_level > w.plan.terrain.water_level)
+
+    r3 = apply_edit(w, EnvState(biome="grass"), "tog'larni baland qil")
+    check("relyef tahriri = terrain", r3.level == "terrain")
+    check("relyef qayta generatsiya qilindi", r3.world.heightmap is not w.heightmap)
+
+    env = EnvState(biome="grass")
+    apply_edit(w, env, "qish keldi qor")
+    check("fasl tahriri qo'llandi", env.season == "qish")
+
+    r5 = apply_edit(w, EnvState(biome="grass"), "sahroga aylantir")
+    check("biom tahriri = full", r5.level == "full" and r5.world.plan.terrain.biome == "desert")
+
+
 def test_audio() -> None:
     from worldclaw.audio import generate_soundscape, RATE
     s = generate_soundscape("grass", seed=1, seconds=2.0)
@@ -493,6 +544,8 @@ def main() -> int:
         ("generativ mesh", test_mesh_generators),
         ("neyron image-to-3D", test_neural_image_to_3d),
         ("generativ audio", test_audio),
+        ("hayot sikli (ekotizim)", test_lifecycle),
+        ("real-vaqt tahrir", test_edit),
         ("glTF eksport", test_gltf_export),
         ("izometrik render", test_iso_render),
         ("tortishish (erkin tushish)", test_gravity_freefall),

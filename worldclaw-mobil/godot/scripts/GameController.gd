@@ -21,6 +21,12 @@ extends Node3D
 var _cache: Dictionary = {}          # kalit -> {"heights", "plan", "mesh"}
 var _aicore = null                    # AICoreBridge (Android'da mavjud)
 
+# Joriy dunyo holati — real-vaqt tahrir uchun (qisman qayta hisoblash).
+var _cur_heights: PackedFloat32Array
+var _cur_plan: Dictionary
+var _cur_placements: Array
+@export var lifecycle: LifecycleDirector
+
 
 func _ready() -> void:
 	# AICore faqat Android qurilmada; boshqa joyda zaxira rejalovchi.
@@ -70,6 +76,12 @@ func generate(prompt: String) -> void:
 
 	_show_terrain(mesh, plan)
 	var count := _scatter.build_instances(placements)
+	# Joriy holatni saqlash (real-vaqt tahrir uchun).
+	_cur_heights = heights
+	_cur_plan = plan
+	_cur_placements = placements
+	if lifecycle != null:
+		lifecycle.biome = plan.terrain.get("biome", "grass")
 
 	if use_physics:
 		# Relyef to'qnashuv jismi + suv sathi + bir necha dinamik tosh.
@@ -134,6 +146,90 @@ func _on_orbit_pressed() -> void:
 
 func _on_walk_pressed() -> void:
 	_camera_rig.set_mode(CameraRig.Mode.WALK)
+
+
+## Real-vaqt prompt tahriri — matndan dunyoni o'zgartiradi (minimal regen).
+## Referens edit.py bilan bir xil darajalar: scatter/water relyefni qayta
+## ishlatadi, terrain regen qiladi, biom to'liq qayta.
+func apply_prompt(text: String) -> void:
+	if _cur_plan.is_empty():
+		generate(text)
+		return
+	var low := text.to_lower()
+	var plan := _cur_plan.duplicate(true)
+	var terr: Dictionary = plan.terrain
+	var level := "env"
+	var veg := ["tree", "palm", "cactus"]
+
+	# Biom -> to'liq qayta.
+	for key in {"sahro": 1, "desert": 1, "orol": 1, "island": 1, "vulqon": 1, "volcano": 1, "kanyon": 1, "canyon": 1}:
+		if low.contains(key):
+			generate(text)
+			return
+
+	# Relyef.
+	var terrain_changed := false
+	if low.contains("tog'") or low.contains("baland") or low.contains("mountain"):
+		terr.mountain_strength = minf(1.0, terr.mountain_strength + 0.2)
+		terr.height_scale = minf(120.0, terr.get("height_scale", 60.0) * 1.15)
+		terrain_changed = true
+	elif low.contains("tekis") or low.contains("flat"):
+		terr.mountain_strength = maxf(0.1, terr.mountain_strength - 0.25)
+		terrain_changed = true
+
+	# Suv.
+	var water_changed := false
+	if low.contains("toshqin") or low.contains("ko'l") or low.contains("flood"):
+		terr.water_level = minf(0.7, terr.get("water_level", 0.28) + 0.1)
+		water_changed = true
+	elif low.contains("qurit") or low.contains("drain"):
+		terr.water_level = maxf(0.0, terr.get("water_level", 0.28) - 0.1)
+		water_changed = true
+
+	# O'simlik / fasl.
+	var scatter_changed := false
+	var scale := 1.0
+	if low.contains("o'rmon") or low.contains("ko'p daraxt") or low.contains("forest"):
+		scale = 1.6; scatter_changed = true
+	elif low.contains("kes") or low.contains("yalang") or low.contains("clear"):
+		scale = 0.4; scatter_changed = true
+	if low.contains("qish") or low.contains("winter"):
+		if lifecycle: lifecycle.day_of_year = 310.0
+		scale *= 0.35; scatter_changed = true
+	elif low.contains("yoz") or low.contains("summer"):
+		if lifecycle: lifecycle.day_of_year = 130.0
+		scale *= 1.15; scatter_changed = true
+	if scatter_changed:
+		for rule: Dictionary in plan.scatter:
+			if rule.kind in veg:
+				rule.density = clampf(rule.density * scale, 0.0, 1.0)
+
+	# Vaqt (faqat lifecycle).
+	if low.contains("tun") or low.contains("night"):
+		if lifecycle: lifecycle.time_of_day = 23.0
+	elif low.contains("kun") or low.contains("day"):
+		if lifecycle: lifecycle.time_of_day = 12.0
+
+	# Minimal qayta hisoblash.
+	if terrain_changed:
+		level = "terrain"
+		_cur_heights = TerrainCompute.try_generate(terr)
+		if _cur_heights.is_empty():
+			_cur_heights = TerrainGenerator.generate_heightmap(terr)
+		var mesh := TerrainGenerator.build_mesh(_cur_heights, terr)
+		_show_terrain(mesh, plan)
+	if terrain_changed or water_changed or scatter_changed:
+		if level == "env":
+			level = "water" if water_changed else "scatter"
+		_cur_placements = ScatterSystem.compute_placements(plan, _cur_heights)
+		_scatter.build_instances(_cur_placements)
+	_cur_plan = plan
+	_set_status("tahrir: %s (%s)" % [text, level])
+
+
+func _on_prompt_submitted(text: String) -> void:
+	if text.strip_edges() != "":
+		apply_prompt(text)
 
 
 func _on_export_pressed() -> void:

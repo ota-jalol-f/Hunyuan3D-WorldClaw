@@ -28,6 +28,8 @@ WorldClaw usulining mobil, oflayn, real-vaqt moslashuvi.
 | + Generativ mesh | `MeshFactory` / `mesh` | CPU (NPU keyin) | procedural shakllar |
 | + Image-to-3D | `neural` | NPU (keyin) | visual hull rekonstruksiya |
 | + Generativ audio | `AudioDirector` / `audio` | CPU/DSP | biom soundscape + musiqa |
+| + Hayot sikli | `LifecycleDirector` / `lifecycle` | CPU | kun/tun, fasl, ob-havo, ekotizim |
+| + Real-vaqt tahrir | `edit` + UI prompt | CPU | promptdan o'zgartirish (minimal regen) |
 | + Fizika (Yer) | `WorldPhysics` / `physics` | fizika serveri | 9.81, to'qnashuv, cho'kish |
 | + 3D eksport (glTF) | `WorldExporter` / `gltf` | — | .glb, istalgan ko'ruvchi |
 | + Izometrik 3D preview | `iso` | — | referens (Godotsiz) |
@@ -109,6 +111,15 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
     **character controller** (`PhysicsWalker.gd` — yuradi, qiyalik chegarasi,
     relyefdan o'tmaydi).
   - **Relyef detali** ✅ — yuqori chastotali detal qatlami (uch impl bir xil).
+  - **Hayot sikli** ✅ — `lifecycle.py` / `LifecycleDirector.gd`: kun/tun
+    (quyosh burilishi/rangi), fasllar (harorat sinusoidasi), ob-havo (haroratga
+    bog'liq qor/yomg'ir), ekotizim (Lotka-Volterra yirtqich-o'lja + o'simlik,
+    o'z-o'zini cheklash bilan barqaror mavsumiy tebranish — reallikga yaqin).
+  - **Real-vaqt tahrir** ✅ — `edit.py` + UI prompt: matn yozib tabiatni
+    o'zgartirish ("qish keldi", "ko'p daraxt", "toshqin", "tog'larni baland qil",
+    "tun"). **Optimizatsiya**: minimal qayta hisoblash — muhit tahriri 0.1ms,
+    o'simlik/suv ~10ms (relyef qayta ishlatiladi), faqat relyef tahriri regen
+    (~1.1s). Noise inline bilan terrain 25% tez.
 
 Mesh shakllarini ko'rish: `render_mesh_lineup` (referens) yoki `.glb` ni oching.
 Fizikани sinash: `test_pipeline.py` (erkin tushish, cho'kish, tunnel, qaytish).

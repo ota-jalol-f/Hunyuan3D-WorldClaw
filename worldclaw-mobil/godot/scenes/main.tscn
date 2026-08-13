@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/GameController.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ScatterSystem.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/CameraRig.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/LifecycleDirector.gd" id="4"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky"]
 
@@ -11,10 +12,15 @@ sky_material = SubResource("Sky")
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1")
+lifecycle = NodePath("LifecycleDirector")
 
 [node name="Sun" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.7, -0.5, 0.5, 0, 0.7, 0.7, -0.7, -0.5, 0.5, 0, 300, 0)
 shadow_enabled = true
+
+[node name="LifecycleDirector" type="Node3D" parent="."]
+script = ExtResource("4")
+sun = NodePath("../Sun")
 
 [node name="TerrainHolder" type="Node3D" parent="."]
 
@@ -52,7 +58,19 @@ text = "Yurish"
 [node name="Export" type="Button" parent="UI/Controls"]
 text = "Eksport .glb"
 
+[node name="Prompt" type="LineEdit" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -68.0
+offset_right = -24.0
+offset_bottom = -20.0
+placeholder_text = "Tabiatni o'zgartiring: \"qish keldi\", \"ko'p daraxt\", \"toshqin\", \"tog'larni baland qil\", \"tun\"…"
+
 [connection signal="pressed" from="UI/Controls/Regenerate" to="." method="_on_regenerate_pressed"]
 [connection signal="pressed" from="UI/Controls/Orbit" to="." method="_on_orbit_pressed"]
 [connection signal="pressed" from="UI/Controls/Walk" to="." method="_on_walk_pressed"]
 [connection signal="pressed" from="UI/Controls/Export" to="." method="_on_export_pressed"]
+[connection signal="text_submitted" from="UI/Prompt" to="." method="_on_prompt_submitted"]

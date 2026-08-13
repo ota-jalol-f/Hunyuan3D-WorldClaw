@@ -36,31 +36,53 @@ def _lerp(a: float, b: float, t: float) -> float:
     return a + (b - a) * t
 
 
+_INV = 1.0 / 32767.5
+
+
 class ValueNoise:
-    """Seedlanadigan 2D qiymat-noise; natija taxminan [-1, 1] oralig'ida."""
+    """Seedlanadigan 2D qiymat-noise; natija taxminan [-1, 1] oralig'ida.
+
+    `at()` ichki hash to'liq inline qilingan (tezlik uchun) — natija
+    `_grad_val` bilan bit-bir xil (GDScript/GLSL parlik uchun saqlangan).
+    """
+
+    __slots__ = ("_seed",)
 
     def __init__(self, seed: int = 0) -> None:
         self._seed = seed & _U32
 
     def _grad_val(self, ix: int, iy: int) -> float:
-        """Panjara tugunidagi psevdo-tasodifiy qiymat, [-1, 1]."""
+        """Referens/parlik uchun (at() inline versiyani ishlatadi)."""
         h = _hash_u((ix * 374761393 + iy * 668265263 + self._seed) & _U32)
-        return (float(h & 0xFFFF) / 32767.5) - 1.0
+        return (float(h & 0xFFFF) * _INV) - 1.0
 
     def at(self, x: float, y: float) -> float:
-        x0 = math.floor(x)
-        y0 = math.floor(y)
-        fx = _fade(x - x0)
-        fy = _fade(y - y0)
+        x0 = int(x) if x >= 0 else int(x) - 1
+        y0 = int(y) if y >= 0 else int(y) - 1
+        tx = x - x0
+        ty = y - y0
+        fx = tx * tx * tx * (tx * (tx * 6.0 - 15.0) + 10.0)
+        fy = ty * ty * ty * (ty * (ty * 6.0 - 15.0) + 10.0)
+        s = self._seed
+        m = _U32
+        base = x0 * 374761393 + y0 * 668265263 + s
+        # To'rt burchak — hash to'liq inline.
+        n = base & m
+        n ^= n >> 16; n = (n * 0x7FEB352D) & m; n ^= n >> 15; n = (n * 0x846CA68B) & m; n ^= n >> 16
+        v00 = (n & 0xFFFF) * _INV - 1.0
+        n = (base + 374761393) & m
+        n ^= n >> 16; n = (n * 0x7FEB352D) & m; n ^= n >> 15; n = (n * 0x846CA68B) & m; n ^= n >> 16
+        v10 = (n & 0xFFFF) * _INV - 1.0
+        n = (base + 668265263) & m
+        n ^= n >> 16; n = (n * 0x7FEB352D) & m; n ^= n >> 15; n = (n * 0x846CA68B) & m; n ^= n >> 16
+        v01 = (n & 0xFFFF) * _INV - 1.0
+        n = (base + 374761393 + 668265263) & m
+        n ^= n >> 16; n = (n * 0x7FEB352D) & m; n ^= n >> 15; n = (n * 0x846CA68B) & m; n ^= n >> 16
+        v11 = (n & 0xFFFF) * _INV - 1.0
 
-        v00 = self._grad_val(x0, y0)
-        v10 = self._grad_val(x0 + 1, y0)
-        v01 = self._grad_val(x0, y0 + 1)
-        v11 = self._grad_val(x0 + 1, y0 + 1)
-
-        top = _lerp(v00, v10, fx)
-        bottom = _lerp(v01, v11, fx)
-        return _lerp(top, bottom, fy)
+        top = v00 + (v10 - v00) * fx
+        bottom = v01 + (v11 - v01) * fx
+        return top + (bottom - top) * fy
 
 
 def fbm(
