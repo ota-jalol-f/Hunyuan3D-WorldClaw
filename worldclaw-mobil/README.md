@@ -98,6 +98,10 @@ oflayn rejalovchisi ishlaydi — loyiha har joyda ochiladi.
   - **Yer fizikasi** ✅ — `physics.py` / `WorldPhysics.gd`: tortishish 9.81,
     material zichligi/ishqalanish/qaytish, relyef to'qnashuvi (HeightMapShape3D),
     dinamik jismlar (dumalab tushadi), qiyalikда sirg'anish, cho'kish.
+    Kengaytmalar: **suv suzishi** (Arximed, yog'och suzadi/tosh cho'kadi) +
+    **oqim** (relyef gradienti bo'yicha), **shamol** (yengil jism ko'proq),
+    **character controller** (`PhysicsWalker.gd` — yuradi, qiyalik chegarasi,
+    relyefdan o'tmaydi).
   - **Relyef detali** ✅ — yuqori chastotali detal qatlami (uch impl bir xil).
 
 Mesh shakllarini ko'rish: `render_mesh_lineup` (referens) yoki `.glb` ni oching.

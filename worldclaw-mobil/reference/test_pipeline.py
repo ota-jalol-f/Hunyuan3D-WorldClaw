@@ -334,6 +334,112 @@ def test_restitution_energy_loss() -> None:
           bounce_peak - ground < drop_h * 0.5, f"sakrash={bounce_peak-ground:.2f} < {drop_h*0.5}")
 
 
+def _ramp_field(size=48, lo=0.1, hi=0.6, water=0.4):
+    from worldclaw.terrain import Heightmap
+    from worldclaw.scene_plan import TerrainSpec
+    from worldclaw.physics import TerrainField
+    spec = TerrainSpec(biome="grass", size=size, world_scale=400.0, height_scale=60.0, water_level=water)
+    hm = Heightmap(size, spec)
+    for gy in range(size):
+        for gx in range(size):
+            hm.data[gy * size + gx] = lo + (hi - lo) * (gx / size)
+    return TerrainField(hm)
+
+
+def _wall_field(size=48, base=0.1, top=0.9, water=0.05):
+    from worldclaw.terrain import Heightmap
+    from worldclaw.scene_plan import TerrainSpec
+    from worldclaw.physics import TerrainField
+    spec = TerrainSpec(biome="grass", size=size, world_scale=400.0, height_scale=60.0, water_level=water)
+    hm = Heightmap(size, spec)
+    for gy in range(size):
+        for gx in range(size):
+            hm.data[gy * size + gx] = top if gx >= size // 2 else base
+    return TerrainField(hm)
+
+
+def test_buoyancy() -> None:
+    from worldclaw.physics import Body, simulate, _submerged_fraction
+    field_, ground = _flat_field(0.1)          # ground=6, suv sathi ~16.8
+    wy = field_.water_y
+    wood = Body("tree", 0, wy + 20, 0, radius=1.5)      # zichlik 700 < 1000 -> suzadi
+    simulate([wood], field_, max_steps=8000)
+    f = _submerged_fraction(wood, wy)
+    check("yog'och suvда suzadi", wood.y - wood.radius > ground + 0.5 and 0.3 < f < 0.98,
+          f"y={wood.y:.2f} ground={ground:.1f} f_sub={f:.2f}")
+    rock = Body("rock", 5, wy + 20, 5, radius=1.5)      # zichlik 2700 -> cho'kadi
+    simulate([rock], field_, max_steps=8000)
+    check("tosh suvда cho'kadi", abs(rock.y - (ground + rock.radius)) < 1.2,
+          f"y={rock.y:.2f} tub={ground+rock.radius:.2f}")
+
+
+def test_water_flow() -> None:
+    from worldclaw.physics import Body, Environment, simulate
+    field_ = _ramp_field()
+    env = Environment(flow_speed=6.0, use_terrain_flow=True)
+    wood = Body("tree", -120.0, field_.water_y - 1.0, -0.0, radius=1.4)
+    x0 = wood.x
+    simulate([wood], field_, max_steps=1500, env=env)
+    check("suv oqimi jismni pastga suradi", wood.x < x0 - 2.0, f"{x0:.1f} -> {wood.x:.1f}")
+
+
+def test_wind_light_vs_heavy() -> None:
+    from worldclaw.physics import Body, Environment, step
+    field_, _ = _flat_field(0.0)
+    env = Environment(wind=(15.0, 0.0, 0.0))
+    light = Body("tree", 0, 100.0, 0, radius=1.5)       # yengil
+    heavy = Body("rock", 0, 100.0, 0, radius=1.5)       # og'ir
+    for _ in range(20):
+        step([light, heavy], field_, 1.0 / 120.0, env)
+    check("shamol yengil jismni ko'proq suradi", light.vx > heavy.vx > 0.0,
+          f"yengil={light.vx:.3f} og'ir={heavy.vx:.3f}")
+
+
+def test_character_falls_and_lands() -> None:
+    from worldclaw import generate_world
+    from worldclaw.physics import TerrainField, Character
+    r = generate_world("yashil vodiy", size=96)
+    field_ = TerrainField(r.heightmap)
+    c = Character(x=0, y=250.0, z=0)
+    for _ in range(4000):
+        c.update(field_, (0.0, 0.0), 1.0 / 120.0)
+        if c.on_ground and abs(c.vy) < 0.01:
+            break
+    ground = field_.height_at(c.x, c.z)
+    check("character yerга tushadi", c.on_ground and abs(c.feet_y - ground) < 0.6,
+          f"feet={c.feet_y:.2f} ground={ground:.2f}")
+
+
+def test_character_walks_terrain() -> None:
+    from worldclaw import generate_world
+    from worldclaw.physics import TerrainField, Character
+    r = generate_world("yashil vodiy", size=96)
+    field_ = TerrainField(r.heightmap)
+    c = Character(x=-100.0, y=250.0, z=0)
+    for _ in range(600):                     # yerга tushirish
+        c.update(field_, (0.0, 0.0), 1.0 / 120.0)
+    x_start = c.x
+    max_pen = 0.0                            # oyoq yerdan qancha PASTга o'tdi (yomon)
+    for _ in range(1200):                    # oldinга yurish
+        c.update(field_, (1.0, 0.0), 1.0 / 120.0)
+        pen = field_.height_at(c.x, c.z) - c.feet_y   # >0 -> relyef ostida
+        max_pen = max(max_pen, pen)
+    check("character yurib relyefdan o'tmaydi", c.x > x_start + 20.0 and max_pen < 1.0,
+          f"dx={c.x-x_start:.1f} max_pen={max_pen:.2f}")
+
+
+def test_character_slope_limit() -> None:
+    from worldclaw.physics import TerrainField, Character
+    field_ = _wall_field()
+    # Devor gx=size/2 da; dunyo x=0 da. Character chapdan yuradi.
+    c = Character(x=-30.0, y=60.0, z=0, max_slope_deg=45.0)
+    for _ in range(400):
+        c.update(field_, (0.0, 0.0), 1.0 / 120.0)   # tushirish
+    for _ in range(800):
+        c.update(field_, (1.0, 0.0), 1.0 / 120.0)   # devorга qarab
+    check("character tik devordan o'tolmaydi", c.x < 0.0, f"x={c.x:.1f} (devor 0 da)")
+
+
 def main() -> int:
     tests = [
         ("noise", test_noise_deterministic),
@@ -357,6 +463,12 @@ def main() -> int:
         ("relyefda cho'kish", test_settle_on_terrain),
         ("tunnel yo'q", test_no_tunneling),
         ("qaytish energiyasi", test_restitution_energy_loss),
+        ("suvда suzish/cho'kish", test_buoyancy),
+        ("suv oqimi", test_water_flow),
+        ("shamol", test_wind_light_vs_heavy),
+        ("character tushadi", test_character_falls_and_lands),
+        ("character yuradi", test_character_walks_terrain),
+        ("character qiyalik chegarasi", test_character_slope_limit),
     ]
     for title, fn in tests:
         print(f"[{title}]")

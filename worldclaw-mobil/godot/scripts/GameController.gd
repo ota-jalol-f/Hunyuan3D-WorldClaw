@@ -72,9 +72,11 @@ func generate(prompt: String) -> void:
 	var count := _scatter.build_instances(placements)
 
 	if use_physics:
-		# Relyef to'qnashuv jismi + bir necha dinamik (dumalab tushadigan) tosh.
+		# Relyef to'qnashuv jismi + suv sathi + bir necha dinamik tosh.
 		var body := WorldPhysics.build_terrain_body(heights, plan.terrain)
 		_terrain_holder.add_child(body)
+		if plan.terrain.get("water_level", 0.0) > 0.01:
+			_terrain_holder.add_child(WorldPhysics.water_surface(plan.terrain))
 		for rb in WorldPhysics.spawn_dynamic(placements, "rock", 24):
 			_terrain_holder.add_child(rb)
 

@@ -17,6 +17,56 @@ const DENSITY := {
 	"rock": 2700.0, "house": 800.0, "tree": 700.0, "palm": 650.0,
 	"cactus": 500.0, "torch": 600.0, "fence": 650.0,
 }
+const WATER_DENSITY := 1000.0
+const WIND_K := 0.6
+
+
+## Suv sathida yarim shaffof tekislik (vizual + sath ma'lumoti).
+static func water_surface(spec: Dictionary) -> MeshInstance3D:
+	var world_scale: float = spec.get("world_scale", 400.0)
+	var water_y: float = spec.get("water_level", 0.28) * spec.get("height_scale", 60.0)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(world_scale, world_scale)
+	var mi := MeshInstance3D.new()
+	mi.name = "WaterSurface"
+	mi.mesh = plane
+	mi.position.y = water_y
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.18, 0.36, 0.54, 0.55)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.metallic = 0.2
+	mat.roughness = 0.1
+	mi.material_override = mat
+	return mi
+
+
+## Bir dinamik jismга suv (ko'tarish/qarshilik/oqim) va shamol kuchlarini
+## qo'llaydi. Har fizika kadrида chaqiriladi (masalan _physics_process/ _integrate_forces).
+## Referens physics.step bilan bir xil formula.
+static func apply_environment(rb: RigidBody3D, kind: String, radius: float, water_y: float,
+							 wind: Vector3, flow: Vector3, dt: float) -> void:
+	var density: float = DENSITY.get(kind, 1500.0)
+	var area := PI * radius * radius
+	var y := rb.global_position.y
+	var top := y + radius
+	var bottom := y - radius
+	var f_sub := 0.0
+	if bottom < water_y:
+		f_sub = 1.0 if top <= water_y else (water_y - bottom) / (2.0 * radius)
+
+	if f_sub > 0.0:
+		# Arximed ko'tarish kuchi.
+		rb.apply_central_force(Vector3.UP * 9.81 * f_sub * (WATER_DENSITY / density) * rb.mass)
+		# Suv qarshiligi.
+		rb.linear_velocity *= max(0.0, 1.0 - 3.0 * f_sub * dt)
+		# Oqim.
+		var rel := flow - rb.linear_velocity
+		rb.apply_central_force(Vector3(rel.x, 0, rel.z) * 1.5 * f_sub * rb.mass)
+
+	# Shamol — havoда (yengil/katta jism ko'proq).
+	if f_sub < 1.0:
+		var k := WIND_K * area / max(0.001, rb.mass) * (1.0 - f_sub)
+		rb.apply_central_force((wind - rb.linear_velocity) * k * rb.mass)
 
 
 ## Relyef balandlik xaritasidan statik to'qnashuv jismini quradi.
